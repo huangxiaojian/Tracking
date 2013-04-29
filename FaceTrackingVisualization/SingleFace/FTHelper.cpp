@@ -138,7 +138,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 					scale, rotationXYZ, translationXYZ, m_pPts2D, VERTEXCOUNT);
 				ftModel->GetTriangles(&m_pTriangles, &m_TriangleCount);
 
-				int x, y;
+				/*int x, y;
 				POINT pos;
 				m_gazeTrack->getLeftPupilXY(x, y);
 				pos.x = x;
@@ -149,7 +149,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 				pos.y = y;
 				DrawGazeInImage(pos, 5, 0xffff0000);
 
-				VisualizeFaceModel(ftModel, &cameraConfig, pSU, 1.0, viewOffset, 0xffffff00);
+				VisualizeFaceModel(ftModel, &cameraConfig, pSU, 1.0, viewOffset, 0xffffff00);*/
                 //hr = VisualizeFaceModel(m_colorImage, ftModel, &cameraConfig, pSU, 1.0, viewOffset, pResult, 0x00FFFF00);
                 ftModel->Release();
             }

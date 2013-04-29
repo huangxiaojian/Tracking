@@ -13,6 +13,8 @@
 #include <FaceTrackLib.h>
 #include "FTHelper.h"
 
+#include "GLContext.h"
+
 #ifdef _DEBUG
 #include <io.h>
 #include <fcntl.h>
@@ -51,7 +53,14 @@ protected:
     BOOL                        ShowVideo(HDC hdc, int width, int height, int originX, int originY);
     BOOL                        ShowEggAvatar(HDC hdc, int width, int height, int originX, int originY);
 
+	//gazetracking
 	BOOL						ShowEye(HDC hdc, int width, int height, int originX, int originY);
+
+	//opengl
+	void						ReSizeGLScene(GLsizei width, GLsizei height);
+	void						InitGL();
+	void						DrawGLScene();
+	GLContext					m_GLContext;
 
     static void                 FTHelperCallingBack(LPVOID lpParam);
     static int const            MaxLoadStringChars = 100;
@@ -71,6 +80,97 @@ protected:
     BOOL                        m_bNearMode;
     BOOL                        m_bSeatedSkeletonMode;
 };
+
+void SingleFace::DrawGLScene()
+{
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);         // Clear The Screen And The Depth Buffer
+	//glLoadIdentity();                           // Reset The Current Modelview Matrix
+
+	glMatrixMode(GL_PROJECTION);                        // Select The Projection Matrix
+	glLoadIdentity();                           // Reset The Projection Matrix
+
+	// Calculate The Aspect Ratio Of The Window
+	gluPerspective(75.0f,1,0.001f,5.0f);
+
+	glMatrixMode(GL_MODELVIEW);                     // Select The Modelview Matrix
+	glLoadIdentity();                           // Reset The Modelview Matrix
+	
+	gluLookAt(0, 0, -3, 0.059938, -0.240880, 1.064333, 0, 1, 0);
+
+
+	GLint* triangles;
+	if(sizeof(GLint)*3 == sizeof(FT_TRIANGLE))
+		triangles = (GLint*)m_FTHelper.GetTriangles();
+	else
+	{
+		triangles = new GLint[m_FTHelper.GetTriangleNum()*3];
+		for(int i = 0 ; i < m_FTHelper.GetTriangleNum(); i++)
+		{
+			triangles[3*i] = m_FTHelper.GetTriangles()[i].i;
+			triangles[3*i+1] = m_FTHelper.GetTriangles()[i].j;
+			triangles[3*i+2] = m_FTHelper.GetTriangles()[i].k;
+		}
+	}
+
+	GLfloat* vertices;
+	if(sizeof(GLfloat)*3 == sizeof(FT_VECTOR3D))
+		vertices = (GLfloat*)m_FTHelper.GetVertices();
+	else
+	{
+		vertices = new GLfloat[m_FTHelper.GetTriangleNum()*3];
+		for(int i = 0; i < m_FTHelper.GetVertexNum(); i++)
+		{
+			vertices[3*i] = m_FTHelper.GetVertices()[i].x;
+			vertices[3*i+1] = m_FTHelper.GetVertices()[i].y;
+			vertices[3*i+2] = m_FTHelper.GetVertices()[i].z;
+		}
+	}
+
+	glPushMatrix();
+	glColor3f(0.0, 1.0, 0.0);
+	glScalef(5.0, 5.0, 5.0);
+	glTranslatef(0.0, 0, -1.3);
+
+	glBegin(GL_LINES);
+	for(int i = 0; i < 206; i++)
+	{
+		glVertex3f(vertices[triangles[i*3]*3], vertices[triangles[i*3]*3+1], vertices[triangles[i*3]*3+2]);
+		glVertex3f(vertices[triangles[i*3+1]*3], vertices[triangles[i*3+1]*3+1], vertices[triangles[i*3+1]*3+2]);
+
+		glVertex3f(vertices[triangles[i*3]*3], vertices[triangles[i*3]*3+1], vertices[triangles[i*3]*3+2]);
+		glVertex3f(vertices[triangles[i*3+2]*3], vertices[triangles[i*3+2]*3+1], vertices[triangles[i*3+2]*3+2]);
+
+		glVertex3f(vertices[triangles[i*3+1]*3], vertices[triangles[i*3+1]*3+1], vertices[triangles[i*3+1]*3+2]);
+		glVertex3f(vertices[triangles[i*3+2]*3], vertices[triangles[i*3+2]*3+1], vertices[triangles[i*3+2]*3+2]);
+	}
+	glEnd();
+
+	glPopMatrix();
+}
+
+void SingleFace::InitGL()
+{
+	glShadeModel(GL_SMOOTH);                        // Enables Smooth Shading
+	glClearColor(0.0f, 0.0f, 0.0f, 0.0f);                   // Black Background
+	glClearDepth(1.0f);                         // Depth Buffer Setup
+	glEnable(GL_DEPTH_TEST);                        // Enables Depth Testing
+	glDepthFunc(GL_LEQUAL);                         // The Type Of Depth Test To Do
+	glHint(GL_PERSPECTIVE_CORRECTION_HINT, GL_NICEST);          // Really Nice Perspective Calculations
+}
+
+void SingleFace::ReSizeGLScene(GLsizei width, GLsizei height)
+{
+	if (height==0)                              // Prevent A Divide By Zero By
+	{
+		height=1;                           // Making Height Equal One
+	}
+
+	GLsizei dis = width > height ? height : width;
+	glViewport(0, 0, dis, dis);                    // Reset The Current Viewport
+	//glViewport(0, 0, dis/2, dis/2);
+	//glViewport(dis/2, dis/2, dis, dis);
+	//glViewport(dis, dis, -dis, -dis);                    // Reset The Current Viewport
+}
 
 // Run the SingleFace application.
 int SingleFace::Run(HINSTANCE hInst, PWSTR lpCmdLine, int nCmdShow)
@@ -131,6 +231,9 @@ BOOL SingleFace::InitInstance(HINSTANCE hInstance, PWSTR lpCmdLine, int nCmdShow
 
     ShowWindow(m_hWnd, nCmdShow);
     UpdateWindow(m_hWnd);
+
+	m_GLContext.init(m_hWnd);
+	InitGL();
 
     return SUCCEEDED(m_FTHelper.Init(m_hWnd,
         FTHelperCallingBack,
@@ -382,12 +485,17 @@ BOOL SingleFace::PaintWindow(HDC hdc, HWND hWnd)
     int halfWidth = width/2;
 
     // Show the video on the right of the window
-    errCount += !ShowVideo(hdc, width - halfWidth, height, halfWidth, 0);
+    //errCount += !ShowVideo(hdc, width - halfWidth, height, halfWidth, 0);
+
 
 	//errCount += !ShowEye(hdc, halfWidth, height, 0, 0);
 
     // Draw the egg avatar on the left of the window
     //errCount += !ShowEggAvatar(hdc, halfWidth, height, 0, 0);
+
+	DrawGLScene();
+	SwapBuffers(hdc);
+
     return ret;
 }
 

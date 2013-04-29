@@ -51,8 +51,6 @@ public:
 	FT_TRIANGLE* GetTriangles() {return m_pTriangles;}
 	int GetVertexNum()			{return VERTEXCOUNT;}
 	int GetTriangleNum()		{return TRIANGLECOUNT;}
-	FT_VECTOR3D& GetLeftPupil()	{return m_leftPupil;}
-	FT_VECTOR3D& GetRightPupil(){return m_rightPupil;}
 
 private:
     KinectSensor                m_KinectSensor;
