@@ -59,4 +59,7 @@ private:
     void CheckCameraInput();
     DWORD WINAPI FaceTrackingThread();
     static DWORD WINAPI FaceTrackingStaticThread(PVOID lpParam);
+
+	HRESULT VisualizeFacetracker(UINT32 color);
+	HRESULT VisualizeFaceModel(IFTModel* pModel, FT_CAMERA_CONFIG const* pCameraConfig, FLOAT const* pSUCoef, FLOAT zoomFactor, POINT viewOffset, UINT32 color);
 };
