@@ -50,6 +50,9 @@
     <ClInclude Include="GLContext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="utilVector.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">

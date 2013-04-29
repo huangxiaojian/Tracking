@@ -203,6 +203,7 @@ xcopy "$(FTSDK_DIR)Redist\amd64\FaceTrackData.dll" "$(OutDir)" /eiycq
     <ClInclude Include="Resource.h" />
     <ClInclude Include="stdafx.h" />
     <ClInclude Include="targetver.h" />
+    <ClInclude Include="utilVector.h" />
     <ClInclude Include="Visualize.h" />
   </ItemGroup>
   <ItemGroup>

@@ -22,6 +22,20 @@
 
 typedef void (*FTHelperCallBack)(PVOID lpParam);
 
+struct GaseState{
+	inline void set(float ox, float oy, int t0, int t1, int t2)
+	{
+		x = ox;
+		y = oy;
+		triangle[0] = t0;
+		triangle[1] = t1;
+		triangle[2] = t2;
+	}
+	float x;
+	float y;
+	int triangle[3];
+};
+
 class FTHelper
 {
 public:
@@ -51,6 +65,10 @@ public:
 	FT_TRIANGLE* GetTriangles() {return m_pTriangles;}
 	int GetVertexNum()			{return VERTEXCOUNT;}
 	int GetTriangleNum()		{return TRIANGLECOUNT;}
+
+	//opengl tracking
+	bool isLastTrackSucceed()	{return m_LastTrackSucceeded;}
+	float GetpupilR()			{return m_pupilR;}
 
 private:
     KinectSensor                m_KinectSensor;
@@ -89,6 +107,10 @@ private:
 	FT_TRIANGLE*				m_pTriangles;
 	UINT						m_TriangleCount;
 
+	//opengl gaze tracking
+	float						m_pupilR;
+	GaseState					m_gazeLastState[2];
+
     BOOL SubmitFraceTrackingResult(IFTResult* pResult);
     void SetCenterOfImage(IFTResult* pResult);
     void CheckCameraInput();
@@ -101,4 +123,5 @@ private:
 	void DrawGazeInImage(POINT pos, int radius, UINT32 color);
 
 	void SaveModel(IFTModel* model, const float* pSUs, UINT32 suCount, const float* pAUs, UINT32 auCount, float scale, const float* rotationXYZ, const float* translationXYZ, int count);
+
 };
