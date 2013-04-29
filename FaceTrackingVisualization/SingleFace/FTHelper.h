@@ -8,6 +8,15 @@
 #include <FaceTrackLib.h>
 #include "KinectSensor.h"
 
+#include "gazeTracking.h"
+
+#ifndef max
+#define max(a,b)    (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef min
+#define min(a,b)    (((a) < (b)) ? (a) : (b))
+#endif
+
 typedef void (*FTHelperCallBack)(PVOID lpParam);
 
 class FTHelper
@@ -28,6 +37,10 @@ public:
     BOOL GetDrawMask()          { return(m_DrawMask);}
     IFTFaceTracker* GetTracker() { return(m_pFaceTracker);}
     HRESULT GetCameraConfig(FT_CAMERA_CONFIG* cameraConfig);
+
+	RECT& GetFaceRect()			{return m_faceRect;}
+	FT_VECTOR3D& GetLeftPupil()	{return m_leftPupil;}
+	FT_VECTOR3D& GetRightPupil(){return m_rightPupil;}
 
 private:
     KinectSensor                m_KinectSensor;
@@ -54,6 +67,11 @@ private:
     NUI_IMAGE_TYPE              m_colorType;
     NUI_IMAGE_RESOLUTION        m_colorRes;
 
+	GazeTracking*				m_gazeTrack;
+	RECT						m_faceRect;
+	FT_VECTOR3D					m_leftPupil;
+	FT_VECTOR3D					m_rightPupil;
+
     BOOL SubmitFraceTrackingResult(IFTResult* pResult);
     void SetCenterOfImage(IFTResult* pResult);
     void CheckCameraInput();
@@ -62,4 +80,6 @@ private:
 
 	HRESULT VisualizeFacetracker(UINT32 color);
 	HRESULT VisualizeFaceModel(IFTModel* pModel, FT_CAMERA_CONFIG const* pCameraConfig, FLOAT const* pSUCoef, FLOAT zoomFactor, POINT viewOffset, UINT32 color);
+
+	void DrawGazeInImage(POINT pos, int radius, UINT32 color);
 };

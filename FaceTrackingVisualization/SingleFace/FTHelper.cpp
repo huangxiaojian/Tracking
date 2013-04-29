@@ -10,6 +10,11 @@
 
 #include <math.h>
 
+#ifdef _DEBUG
+#include <iostream>
+#endif // _DEBUG
+
+
 #ifdef SAMPLE_OPTIONS
 #include "Options.h"
 #else
@@ -62,6 +67,9 @@ HRESULT FTHelper::Init(HWND hWnd, FTHelperCallBack callBack, PVOID callBackParam
     m_colorType = colorType;
     m_colorRes = colorRes;
     m_hFaceTrackingThread = CreateThread(NULL, 0, FaceTrackingStaticThread, (PVOID)this, 0, 0);
+
+	m_gazeTrack = new GazeTracking();
+	m_gazeTrack->initialize("res/haarcascade_frontalface_alt.xml");
     return S_OK;
 }
 
@@ -107,6 +115,26 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
             HRESULT hr = m_pFaceTracker->GetFaceModel(&ftModel);
             if (SUCCEEDED(hr))
             {
+				IplImage *img = cvCreateImage(cvSize(m_colorImage->GetWidth(), m_colorImage->GetHeight()), IPL_DEPTH_8U, 4);
+				memcpy(img->imageData, m_colorImage->GetBuffer(), m_colorImage->GetBufferSize());
+				cv::Mat frame(img, true);
+				if(!frame.empty())
+				{
+					m_gazeTrack->process(frame);
+				}
+
+				int x, y;
+				POINT pos;
+				m_gazeTrack->getLeftPupilXY(x, y);
+				pos.x = x;
+				pos.y = y;
+				DrawGazeInImage(pos, 5, 0xffff0000);
+				m_gazeTrack->getRightPupilXY(x, y);
+				pos.x = x;
+				pos.y = y;
+				DrawGazeInImage(pos, 5, 0xffff0000);
+
+				VisualizeFaceModel(ftModel, &cameraConfig, pSU, 1.0, viewOffset, 0xffffff00);
                 //hr = VisualizeFaceModel(m_colorImage, ftModel, &cameraConfig, pSU, 1.0, viewOffset, pResult, 0x00FFFF00);
                 ftModel->Release();
             }
@@ -485,14 +513,14 @@ HRESULT FTHelper::VisualizeFaceModel(IFTModel* pModel, FT_CAMERA_CONFIG const* p
 							}
 
 							// Render the face rect in magenta
-							RECT rectFace;
-							hr = m_pFTResult->GetFaceRect(&rectFace);
+							//RECT rectFace;
+							hr = m_pFTResult->GetFaceRect(&m_faceRect);
 							if (SUCCEEDED(hr))
 							{
-								POINT leftTop = {rectFace.left, rectFace.top};
-								POINT rightTop = {rectFace.right - 1, rectFace.top};
-								POINT leftBottom = {rectFace.left, rectFace.bottom - 1};
-								POINT rightBottom = {rectFace.right - 1, rectFace.bottom - 1};
+								POINT leftTop = {m_faceRect.left, m_faceRect.top};
+								POINT rightTop = {m_faceRect.right - 1, m_faceRect.top};
+								POINT leftBottom = {m_faceRect.left, m_faceRect.bottom - 1};
+								POINT rightBottom = {m_faceRect.right - 1, m_faceRect.bottom - 1};
 								UINT32 nColor = 0xff00ff;
 								SUCCEEDED(hr = m_colorImage->DrawLine(leftTop, rightTop, nColor, 1)) &&
 									SUCCEEDED(hr = m_colorImage->DrawLine(rightTop, rightBottom, nColor, 1)) &&
@@ -517,4 +545,23 @@ HRESULT FTHelper::VisualizeFaceModel(IFTModel* pModel, FT_CAMERA_CONFIG const* p
 		hr = E_OUTOFMEMORY;
 	}
 	return hr;
+}
+
+void FTHelper::DrawGazeInImage(POINT pos, int radius, UINT32 color)
+{
+	POINT up, left, down, right;
+	down.x = up.x = pos.x;
+	left.y = right.y = pos.y;
+
+	for(int i = 1; i < radius;i ++)
+	{
+		up.y = pos.y+i;
+		left.x = pos.x-i;
+		right.x = pos.x + i;
+		down.y = pos.y-i;
+		m_colorImage->DrawLine(up, left, color, 1);
+		m_colorImage->DrawLine(left, down, color, 1);
+		m_colorImage->DrawLine(down, right, color, 1);
+		m_colorImage->DrawLine(right, up, color, 1);
+	}
 }
