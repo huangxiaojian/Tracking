@@ -10,6 +10,8 @@
 
 #include "gazeTracking.h"
 
+#define VERTEXCOUNT 121
+#define TRIANGLECOUNT 206
 
 #ifndef max
 #define max(a,b)    (((a) > (b)) ? (a) : (b))
@@ -68,10 +70,17 @@ private:
     NUI_IMAGE_TYPE              m_colorType;
     NUI_IMAGE_RESOLUTION        m_colorRes;
 
+	//gazetracking
 	GazeTracking*				m_gazeTrack;
 	RECT						m_faceRect;
 	FT_VECTOR3D					m_leftPupil;
 	FT_VECTOR3D					m_rightPupil;
+
+	//opengl
+	FT_VECTOR3D					m_pPts3D[VERTEXCOUNT];
+	FT_VECTOR2D					m_pPts2D[VERTEXCOUNT];
+	FT_TRIANGLE*				m_pTriangles;
+	UINT						m_TriangleCount;
 
     BOOL SubmitFraceTrackingResult(IFTResult* pResult);
     void SetCenterOfImage(IFTResult* pResult);
@@ -83,4 +92,6 @@ private:
 	HRESULT VisualizeFaceModel(IFTModel* pModel, FT_CAMERA_CONFIG const* pCameraConfig, FLOAT const* pSUCoef, FLOAT zoomFactor, POINT viewOffset, UINT32 color);
 
 	void DrawGazeInImage(POINT pos, int radius, UINT32 color);
+
+	void SaveModel(IFTModel* model, const float* pSUs, UINT32 suCount, const float* pAUs, UINT32 auCount, float scale, const float* rotationXYZ, const float* translationXYZ, int count);
 };
