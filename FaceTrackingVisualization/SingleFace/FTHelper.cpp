@@ -23,6 +23,10 @@ PVOID _opt = NULL;
 
 #include "utilVector.h"
 
+#define FACETRIANGLESINDEXARRAY {69,53,70,70,73,69,74,73,70,74,56,73,68,20,67,68,67,72,72,67,71,71,23,72}
+//#define FACETRIANGLESINDEXARRAY {70,54,71,71,74,70,75,74,71,75,57,74,69,21,68,69,68,73,73,68,72,72,24,73}
+#define ISZERO(x) (fabsf((x))<0.00001)
+
 namespace util{
 
 	FT_VECTOR3D PLUS(const FT_VECTOR3D& a, const FT_VECTOR3D& b)
@@ -157,6 +161,18 @@ FTHelper::FTHelper()
     m_bFallbackToDefault = FALSE;
     m_colorType = NUI_IMAGE_TYPE_COLOR;
     m_colorRes = NUI_IMAGE_RESOLUTION_INVALID;
+
+	memset(m_pPts3D, 0, VERTEXCOUNT*sizeof(FT_VECTOR3D));
+	memset(m_pPts2D, 0, VERTEXCOUNT*sizeof(FT_VECTOR2D));
+	m_pTriangles = NULL;
+	m_TriangleCount = 0;
+
+	memset(&m_leftPupil, 0, sizeof(FT_VECTOR3D));
+	memset(&m_rightPupil, 0, sizeof(FT_VECTOR3D));
+	m_pupilR = 0;
+
+	m_gazeLastState[0].set(0.5,0,69,74,73);
+	m_gazeLastState[1].set(0.5,0,67,72,71);
 }
 
 FTHelper::~FTHelper()
@@ -253,6 +269,16 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 				ftModel->GetProjectedShape(&cameraConfig, 1.0, viewOffset, pSU, ftModel->GetSUCount(), pAUs, auCount, 
 					scale, rotationXYZ, translationXYZ, m_pPts2D, VERTEXCOUNT);
 				ftModel->GetTriangles(&m_pTriangles, &m_TriangleCount);
+
+				m_pupilR = (PointDis(69, 74)+PointDis(70,73)+PointDis(67,72)+PointDis(68,71))/16;
+				if(m_gazeTrack->isFindFace())
+				{	
+#ifdef _DEBUG
+					//std::cout << "Begin Map()" << std::endl;
+#endif // _DEBUG
+
+					Map2Dto3D();
+				}
 
 				/*int x, y;
 				POINT pos;
@@ -720,4 +746,104 @@ void FTHelper::SaveModel(IFTModel* model, const float* pSUs, UINT32 suCount, con
 	fclose(fobj); 
 	delete[] pVertices; 
 	return; 
+}
+
+
+float FTHelper::PointDis(int n, int m)
+{
+	return sqrtf((m_pPts3D[n].x-m_pPts3D[m].x)*(m_pPts3D[n].x-m_pPts3D[m].x)+(m_pPts3D[n].y-m_pPts3D[m].y)*(m_pPts3D[n].y-m_pPts3D[m].y)+(m_pPts3D[n].z-m_pPts3D[m].z)*(m_pPts3D[n].z-m_pPts3D[m].z));
+}
+
+void FTHelper::GetPupilFromLastState(FT_VECTOR3D& pupil, GaseState& gazeState)
+{
+	pupil.x = m_pPts3D[gazeState.triangle[0]].x+(m_pPts3D[gazeState.triangle[1]].x-m_pPts3D[gazeState.triangle[0]].x)*gazeState.x+(m_pPts3D[gazeState.triangle[2]].x-m_pPts3D[gazeState.triangle[0]].x)*gazeState.y;
+	pupil.y = m_pPts3D[gazeState.triangle[0]].y+(m_pPts3D[gazeState.triangle[1]].y-m_pPts3D[gazeState.triangle[0]].y)*gazeState.x+(m_pPts3D[gazeState.triangle[2]].y-m_pPts3D[gazeState.triangle[0]].y)*gazeState.y;
+	pupil.z = m_pPts3D[gazeState.triangle[0]].z+(m_pPts3D[gazeState.triangle[1]].z-m_pPts3D[gazeState.triangle[0]].z)*gazeState.x+(m_pPts3D[gazeState.triangle[2]].z-m_pPts3D[gazeState.triangle[0]].z)*gazeState.y;
+}
+
+void FTHelper::Map2Dto3D()
+{
+	cv::Point left = m_gazeTrack->getLeftPupil();
+	cv::Point right = m_gazeTrack->getRightPupil();
+	
+	int triangles[] = FACETRIANGLESINDEXARRAY;
+	POINT pupil[2];
+	pupil[1].x = left.x;
+	pupil[1].y = left.y;
+	pupil[0].x = right.x;
+	pupil[0].y = right.y;
+	
+	bool flags[2] = {false, false};
+	FT_VECTOR3D tmpPupil[2];
+
+	int halflen = sizeof(triangles)/6/sizeof(triangles[0]);
+
+#ifdef _DEBUG
+	std::cout << "left pupil:\t" << left.x << ' ' << left.y << std::endl;
+	std::cout << "right pupil:\t" << right.x << ' ' << right.y << std::endl;
+
+	for(int i = 0; i < halflen*2; i++)
+	{
+		for(int j = 0; j < 3; j++)
+		{
+			std::cout << triangles[i*3+j] << ":\t" << m_pPts2D[triangles[i*3+j]].x << ' ' << m_pPts2D[triangles[i*3+j]].y << std::endl;
+		}
+	}
+#endif
+
+	for(int index = 0; index < 2; index++)
+	{
+		for(int i = index*halflen; i < halflen*(index+1); i++)
+		{
+			POINT p[3];
+			FT_VECTOR3D q[3];
+			float x, y;
+			for(int j = 0; j < 3; j++)
+			{
+				p[j] = util::FloatToPOINT(m_pPts2D[triangles[i*3+j]].x, m_pPts2D[triangles[i*3+j]].y);
+				q[j] = m_pPts3D[triangles[i*3+j]];
+			}
+#ifdef _DEBUG
+			//std::cout << "I'm here!" << std::endl;
+#endif
+			if(util::PointinTriangle(pupil[index], p, 0))
+			{
+				FT_VECTOR3D mapP = util::triangleMap(pupil[index], p, q, x, y);
+				FT_VECTOR3D n = util::Normal(q);
+				//FT_VECTOR3D center(mapP.x+n.x, mapP.y+n.y, mapP.z+n.z);
+#ifdef _DEBUG
+				std::cout << "x:" << x << "\ty:" << y << std::endl;
+#endif // _DEBUG
+				m_gazeLastState[index].set(x, y, triangles[i*3], triangles[i*3+1], triangles[i*3+2]);
+				tmpPupil[index] = util::PLUS(mapP, util::TIMES(n, -m_pupilR));
+				std::cout << "index:" << tmpPupil[index].x << ' ' << tmpPupil[index].y << ' ' << tmpPupil[2].z << std::endl;
+				flags[index] = true;
+				break;
+			}
+		}
+	}
+	
+	if(flags[1])
+	{
+#ifdef _DEBUG
+		std::cout << "Map2Dto3D(): left is OK" << std::endl;
+#endif
+		m_leftPupil = tmpPupil[1];
+	}
+	else
+	{
+		GetPupilFromLastState(m_leftPupil, m_gazeLastState[1]);
+	}
+	
+	if(flags[0])
+	{
+#ifdef _DEBUG
+		std::cout << "Map2Dto3D(): right is OK" << std::endl;
+#endif
+		m_rightPupil = tmpPupil[0];
+	}
+	else
+	{
+		GetPupilFromLastState(m_rightPupil, m_gazeLastState[0]);
+	}
 }

@@ -83,6 +83,11 @@ protected:
 
 void SingleFace::DrawGLScene()
 {
+	GLfloat pos[3];
+	pos[0] = (m_FTHelper.GetVertices()[73].x+m_FTHelper.GetVertices()[70].x)*0.5;
+	pos[1] = (m_FTHelper.GetVertices()[73].y+m_FTHelper.GetVertices()[70].y)*0.5;
+	pos[2] = (m_FTHelper.GetVertices()[73].z+m_FTHelper.GetVertices()[70].z)*0.5;
+
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);         // Clear The Screen And The Depth Buffer
 	//glLoadIdentity();                           // Reset The Current Modelview Matrix
 
@@ -95,7 +100,8 @@ void SingleFace::DrawGLScene()
 	glMatrixMode(GL_MODELVIEW);                     // Select The Modelview Matrix
 	glLoadIdentity();                           // Reset The Modelview Matrix
 	
-	gluLookAt(0, 0, -3, 0.059938, -0.240880, 1.064333, 0, 1, 0);
+	//gluLookAt(0, 0, -3, 0.059938, -0.240880, 1.064333, 0, 1, 0);
+	gluLookAt(pos[0], pos[1], pos[2]+0.03, pos[0], pos[1], pos[2], 0, 1, 0);
 
 
 	GLint* triangles;
@@ -128,8 +134,8 @@ void SingleFace::DrawGLScene()
 
 	glPushMatrix();
 	glColor3f(0.0, 1.0, 0.0);
-	glScalef(5.0, 5.0, 5.0);
-	glTranslatef(0.0, 0, -1.3);
+	//glScalef(5.0, 5.0, 5.0);
+	//glTranslatef(0.0, 0, -1.3);
 
 	glBegin(GL_LINES);
 	for(int i = 0; i < 206; i++)
@@ -144,6 +150,29 @@ void SingleFace::DrawGLScene()
 		glVertex3f(vertices[triangles[i*3+2]*3], vertices[triangles[i*3+2]*3+1], vertices[triangles[i*3+2]*3+2]);
 	}
 	glEnd();
+
+	glColor3f(0.0, 0.0, 1.0);
+	glPushMatrix();
+	//glTranslatef(vertices[210], vertices[211], vertices[212]);
+	glTranslatef(m_FTHelper.GetRightPupil().x, m_FTHelper.GetRightPupil().y, m_FTHelper.GetRightPupil().z);
+#ifdef _DEBUG
+	//std::cout << "DrawGLScene(): vert::" << vertices[210] << ' ' << vertices[211] << ' ' << vertices[212] << std::endl;
+	//std::cout << "DrawGLScene(): Draw:" << m_FTHelper.GetRightPupil().x << ' ' << m_FTHelper.GetRightPupil().y << ' ' << m_FTHelper.GetRightPupil().z << std::endl;
+#endif
+	//glutSolidSphere(m_FTHelper.GetPupilR(), 10, 20);
+	glutWireSphere(m_FTHelper.GetPupilR(), 10, 10);
+	glPopMatrix();
+
+	glColor3f(1.0, 0.0, 0.0);
+	glPushMatrix();
+	//glTranslatef(vertices[15], vertices[16], vertices[17]);
+	glTranslatef(m_FTHelper.GetLeftPupil().x, m_FTHelper.GetLeftPupil().y, m_FTHelper.GetLeftPupil().z);
+#ifdef _DEBUG
+	//std::cout << "DrawGLScene(): Draw:" << m_FTHelper.GetLeftPupil().x << ' ' << m_FTHelper.GetLeftPupil().y << ' ' << m_FTHelper.GetLeftPupil().z << std::endl;
+#endif
+	//glutSolidSphere(m_FTHelper.GetPupilR(), 10, 20);
+	glutWireSphere(m_FTHelper.GetPupilR(), 10, 10);
+	glPopMatrix();
 
 	glPopMatrix();
 }

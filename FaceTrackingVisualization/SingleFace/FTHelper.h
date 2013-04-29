@@ -68,7 +68,7 @@ public:
 
 	//opengl tracking
 	bool isLastTrackSucceed()	{return m_LastTrackSucceeded;}
-	float GetpupilR()			{return m_pupilR;}
+	float GetPupilR()			{return m_pupilR;}
 
 private:
     KinectSensor                m_KinectSensor;
@@ -124,4 +124,7 @@ private:
 
 	void SaveModel(IFTModel* model, const float* pSUs, UINT32 suCount, const float* pAUs, UINT32 auCount, float scale, const float* rotationXYZ, const float* translationXYZ, int count);
 
+	void Map2Dto3D();
+	float PointDis(int n, int m);
+	void GetPupilFromLastState(FT_VECTOR3D& pupil, GaseState& gazeState);
 };
