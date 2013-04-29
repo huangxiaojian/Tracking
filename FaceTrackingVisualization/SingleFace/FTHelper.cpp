@@ -570,3 +570,28 @@ void FTHelper::DrawGazeInImage(POINT pos, int radius, UINT32 color)
 		m_colorImage->DrawLine(right, up, color, 1);
 	}
 }
+
+void FTHelper::SaveModel(IFTModel* model, const float* pSUs, UINT32 suCount, const float* pAUs, UINT32 auCount, float scale, const float* rotationXYZ, const float* translationXYZ, int count)
+{
+	UINT32 vertexCount = model->GetVertexCount();//model->GetVertexCount(); 
+	FT_VECTOR3D* pVertices = new FT_VECTOR3D[vertexCount]; 
+	model->Get3DShape(pSUs, suCount, pAUs, auCount, scale, rotationXYZ, translationXYZ, pVertices, vertexCount); 
+	UINT32 triangleCount = 0; 
+	FT_TRIANGLE* pTriangles = NULL; 
+	model->GetTriangles(&pTriangles, &triangleCount); 
+	FILE* fobj = NULL; 
+	char filename[10];
+	sprintf_s(filename, "%d", count);
+	strcat(filename, ".obj");
+	fopen_s(&fobj, filename, "w"); 
+	fprintf(fobj, "# %u vertices, # %u faces\n", vertexCount, triangleCount); 
+	for (UINT32 vi = 0; vi < vertexCount; ++vi) { 
+		fprintf(fobj, "v %f %f %f\n", pVertices[vi].x, pVertices[vi].y, pVertices[vi].z);
+	} 
+	for (UINT32 ti = 0; ti < triangleCount; ++ti) { 
+		fprintf(fobj, "f %d %d %d\n", pTriangles[ti].i+1, pTriangles[ti].j+1, pTriangles[ti].k+1); 
+	} 
+	fclose(fobj); 
+	delete[] pVertices; 
+	return; 
+}

@@ -41,7 +41,16 @@ public:
     IFTFaceTracker* GetTracker() { return(m_pFaceTracker);}
     HRESULT GetCameraConfig(FT_CAMERA_CONFIG* cameraConfig);
 
+	//gazetracking
 	RECT& GetFaceRect()			{return m_faceRect;}
+	FT_VECTOR3D& GetLeftPupil()	{return m_leftPupil;}
+	FT_VECTOR3D& GetRightPupil(){return m_rightPupil;}
+
+	//opengl
+	FT_VECTOR3D* GetVertices()	{return m_pPts3D;}
+	FT_TRIANGLE* GetTriangles() {return m_pTriangles;}
+	int GetVertexNum()			{return VERTEXCOUNT;}
+	int GetTriangleNum()		{return TRIANGLECOUNT;}
 	FT_VECTOR3D& GetLeftPupil()	{return m_leftPupil;}
 	FT_VECTOR3D& GetRightPupil(){return m_rightPupil;}
 

@@ -47,6 +47,9 @@
     <ClInclude Include="gazeTracking.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="GLContext.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="stdafx.cpp">
