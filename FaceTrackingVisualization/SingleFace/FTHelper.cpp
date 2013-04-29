@@ -128,6 +128,16 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 
 				}
 
+				FLOAT *pAUs;
+				UINT auCount;
+				hr = m_pFTResult->GetAUCoefficients(&pAUs, &auCount);
+				FLOAT scale, rotationXYZ[3], translationXYZ[3];
+				m_pFTResult->Get3DPose(&scale, rotationXYZ, translationXYZ);
+				ftModel->Get3DShape(pSU, ftModel->GetSUCount(), pAUs, ftModel->GetAUCount(), scale, rotationXYZ, translationXYZ, m_pPts3D, VERTEXCOUNT);
+				ftModel->GetProjectedShape(&cameraConfig, 1.0, viewOffset, pSU, ftModel->GetSUCount(), pAUs, auCount, 
+					scale, rotationXYZ, translationXYZ, m_pPts2D, VERTEXCOUNT);
+				ftModel->GetTriangles(&m_pTriangles, &m_TriangleCount);
+
 				int x, y;
 				POINT pos;
 				m_gazeTrack->getLeftPupilXY(x, y);
