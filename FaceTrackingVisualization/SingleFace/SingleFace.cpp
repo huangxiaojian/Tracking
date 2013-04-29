@@ -26,8 +26,10 @@ public:
         , m_pVideoBuffer(NULL)
         , m_depthType(NUI_IMAGE_TYPE_DEPTH_AND_PLAYER_INDEX)
         , m_colorType(NUI_IMAGE_TYPE_COLOR)
-        , m_depthRes(NUI_IMAGE_RESOLUTION_320x240)
-        , m_colorRes(NUI_IMAGE_RESOLUTION_640x480)
+		, m_depthRes(NUI_IMAGE_RESOLUTION_640x480)
+		, m_colorRes(NUI_IMAGE_RESOLUTION_1280x960)
+        /*, m_depthRes(NUI_IMAGE_RESOLUTION_320x240)
+        , m_colorRes(NUI_IMAGE_RESOLUTION_640x480)*/
         , m_bNearMode(TRUE)
         , m_bSeatedSkeletonMode(FALSE)
     {}
