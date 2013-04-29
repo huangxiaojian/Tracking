@@ -121,6 +121,11 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 				if(!frame.empty())
 				{
 					m_gazeTrack->process(frame);
+#ifdef _DEBUG
+					if(m_gazeTrack->isFindFace())
+						std::cout << "Gaze Tracked!" << std::endl;
+#endif // _DEBUG
+
 				}
 
 				int x, y;

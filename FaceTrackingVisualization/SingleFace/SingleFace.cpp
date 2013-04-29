@@ -50,6 +50,9 @@ protected:
     BOOL                        PaintWindow(HDC hdc, HWND hWnd);
     BOOL                        ShowVideo(HDC hdc, int width, int height, int originX, int originY);
     BOOL                        ShowEggAvatar(HDC hdc, int width, int height, int originX, int originY);
+
+	BOOL						ShowEye(HDC hdc, int width, int height, int originX, int originY);
+
     static void                 FTHelperCallingBack(LPVOID lpParam);
     static int const            MaxLoadStringChars = 100;
 
@@ -333,6 +336,12 @@ BOOL SingleFace::ShowVideo(HDC hdc, int width, int height, int originX, int orig
                 {
                     ret = FALSE;
                 }
+				RECT const& faceRect =  m_FTHelper.GetFaceRect();
+				if (0 == StretchDIBits(hdc, 0, 0, width, height,
+					faceRect.left, faceRect.bottom, faceRect.right-faceRect.left, faceRect.top-faceRect.bottom, m_pVideoBuffer->GetBuffer(), &bmi, DIB_RGB_COLORS, SRCCOPY))
+				{
+					ret = FALSE;
+				}
             }
         }
     }
@@ -375,8 +384,10 @@ BOOL SingleFace::PaintWindow(HDC hdc, HWND hWnd)
     // Show the video on the right of the window
     errCount += !ShowVideo(hdc, width - halfWidth, height, halfWidth, 0);
 
+	//errCount += !ShowEye(hdc, halfWidth, height, 0, 0);
+
     // Draw the egg avatar on the left of the window
-    errCount += !ShowEggAvatar(hdc, halfWidth, height, 0, 0);
+    //errCount += !ShowEggAvatar(hdc, halfWidth, height, 0, 0);
     return ret;
 }
 
@@ -519,6 +530,71 @@ void SingleFace::ParseCmdString(PWSTR lpCmdLine)
     if(argv) LocalFree(argv);
 }
 
+BOOL SingleFace::ShowEye(HDC hdc, int width, int height, int originX, int originY)
+{
+	BOOL ret = TRUE;
+
+	// Now, copy a fraction of the camera image into the screen.
+	IFTImage* colorImage = m_FTHelper.GetColorImage();
+	if (colorImage)
+	{
+		int iWidth = colorImage->GetWidth();
+		int iHeight = colorImage->GetHeight();
+		if (iWidth > 0 && iHeight > 0)
+		{
+			int iTop = 0;
+			int iBottom = iHeight;
+			int iLeft = 0;
+			int iRight = iWidth;
+
+			// Keep a separate buffer.
+			if (m_pVideoBuffer && SUCCEEDED(m_pVideoBuffer->Allocate(iWidth, iHeight, FTIMAGEFORMAT_UINT8_B8G8R8A8)))
+			{
+				// Copy do the video buffer while converting bytes
+				colorImage->CopyTo(m_pVideoBuffer, NULL, 0, 0);
+
+				// Compute the best approximate copy ratio.
+				float w1 = (float)iHeight * (float)width;
+				float w2 = (float)iWidth * (float)height;
+				if (w2 > w1 && height > 0)
+				{
+					// video image too wide
+					float wx = w1/height;
+					iLeft = (int)max(0, m_FTHelper.GetXCenterFace() - wx / 2);
+					iRight = iLeft + (int)wx;
+					if (iRight > iWidth)
+					{
+						iRight = iWidth;
+						iLeft = iRight - (int)wx;
+					}
+				}
+				else if (w1 > w2 && width > 0)
+				{
+					// video image too narrow
+					float hy = w2/width;
+					iTop = (int)max(0, m_FTHelper.GetYCenterFace() - hy / 2);
+					iBottom = iTop + (int)hy;
+					if (iBottom > iHeight)
+					{
+						iBottom = iHeight;
+						iTop = iBottom - (int)hy;
+					}
+				}
+
+				RECT const& faceRect =  m_FTHelper.GetFaceRect();
+				int const bmpPixSize = m_pVideoBuffer->GetBytesPerPixel();
+				SetStretchBltMode(hdc, HALFTONE);
+				BITMAPINFO bmi = {sizeof(BITMAPINFO), iWidth, iHeight, 1, static_cast<WORD>(bmpPixSize * CHAR_BIT), BI_RGB, m_pVideoBuffer->GetStride() * iHeight, 5000, 5000, 0, 0};
+				if (0 == StretchDIBits(hdc, originX, originY, width, height,
+					faceRect.left, faceRect.bottom, faceRect.right-faceRect.left, faceRect.top-faceRect.bottom, m_pVideoBuffer->GetBuffer(), &bmi, DIB_RGB_COLORS, SRCCOPY))
+				{
+					ret = FALSE;
+				}
+			}
+		}
+	}
+	return ret;
+}
 
 // Program's main entry point
 int APIENTRY wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
