@@ -803,9 +803,6 @@ void FTHelper::Map2Dto3D()
 				p[j] = util::FloatToPOINT(m_pPts2D[triangles[i*3+j]].x, m_pPts2D[triangles[i*3+j]].y);
 				q[j] = m_pPts3D[triangles[i*3+j]];
 			}
-#ifdef _DEBUG
-			//std::cout << "I'm here!" << std::endl;
-#endif
 			if(util::PointinTriangle(pupil[index], p, 0))
 			{
 				FT_VECTOR3D mapP = util::triangleMap(pupil[index], p, q, x, y);
