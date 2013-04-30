@@ -247,6 +247,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
             HRESULT hr = m_pFaceTracker->GetFaceModel(&ftModel);
             if (SUCCEEDED(hr))
             {
+#ifndef OUTPUTTOFILE
 				IplImage *img = cvCreateImage(cvSize(m_colorImage->GetWidth(), m_colorImage->GetHeight()), IPL_DEPTH_8U, 4);
 				memcpy(img->imageData, m_colorImage->GetBuffer(), m_colorImage->GetBufferSize());
 				cv::Mat frame(img, true);
@@ -259,6 +260,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 #endif // _DEBUG
 
 				}
+#endif
 
 				FLOAT *pAUs;
 				UINT auCount;
@@ -271,6 +273,18 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 				ftModel->GetTriangles(&m_pTriangles, &m_TriangleCount);
 
 				m_pupilR = (PointDis(69, 74)+PointDis(70,73)+PointDis(67,72)+PointDis(68,71))/16;
+
+#ifdef OUTPUTTOFILE
+				static int count = 0;
+				fprintf(fp3, "%d\t", (int)(m_pPts2D[5].x+0.5));
+				fprintf(fp4, "%d\t", (int)(m_pPts2D[5].y+0.5));
+				if(count++ % 500 == 0)
+				{
+					fputc('\n', fp3);
+					fputc('\n', fp4);
+				}
+#endif
+#ifndef OUTPUTTOFILE
 				if(m_gazeTrack->isFindFace())
 				{	
 #ifdef _DEBUG
@@ -279,7 +293,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 
 					Map2Dto3D();
 				}
-
+#endif
 				/*int x, y;
 				POINT pos;
 				m_gazeTrack->getLeftPupilXY(x, y);
@@ -355,6 +369,28 @@ void FTHelper::CheckCameraInput()
                 hrFT = m_pFaceTracker->StartTracking(&sensorData, NULL, hint, m_pFTResult);
             }
         }
+
+#ifdef OUTPUTTOFILE
+		IplImage *img = cvCreateImage(cvSize(m_colorImage->GetWidth(), m_colorImage->GetHeight()), IPL_DEPTH_8U, 4);
+		memcpy(img->imageData, m_colorImage->GetBuffer(), m_colorImage->GetBufferSize());
+		cv::Mat frame(img, true);
+		static int count = 0;
+		if(!frame.empty())
+		{
+			m_gazeTrack->process(frame);
+			if(m_gazeTrack->isFindFace())
+			{
+				fprintf(fp1, "%d\t", m_gazeTrack->getLeftPupil().x);
+				fprintf(fp2, "%d\t", m_gazeTrack->getLeftPupil().y);
+				count++;
+				if(count % 500 == 0)
+				{
+					fputc('\n', fp1);
+					fputc('\n', fp2);
+				}
+			}
+		}
+#endif
     }
 
     m_LastTrackSucceeded = SUCCEEDED(hrFT) && SUCCEEDED(m_pFTResult->GetStatus());

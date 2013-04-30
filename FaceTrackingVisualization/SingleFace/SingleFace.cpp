@@ -20,6 +20,16 @@
 #include <fcntl.h>
 #endif
 
+#ifdef OUTPUTTOFILE
+#include <stdio.h>
+
+FILE* fp1;
+FILE* fp2;
+FILE* fp3;
+FILE* fp4;
+#endif
+
+
 class SingleFace
 {
 public:
@@ -204,6 +214,14 @@ void SingleFace::ReSizeGLScene(GLsizei width, GLsizei height)
 // Run the SingleFace application.
 int SingleFace::Run(HINSTANCE hInst, PWSTR lpCmdLine, int nCmdShow)
 {
+#ifdef OUTPUTTOFILE
+	fp1 = fopen("x2.xls", "w");
+	fp2 = fopen("y2.xls", "w");
+	fp3 = fopen("nosex2.xls", "w");
+	fp4 = fopen("nosey2.xls", "w");
+#endif 
+
+
     MSG msg = {static_cast<HWND>(0), static_cast<UINT>(0), static_cast<WPARAM>(-1)};
     if (InitInstance(hInst, lpCmdLine, nCmdShow))
     {
@@ -219,6 +237,12 @@ int SingleFace::Run(HINSTANCE hInst, PWSTR lpCmdLine, int nCmdShow)
     }
     UninitInstance();
 
+#ifdef OUTPUTTOFILE
+	fclose(fp1);
+	fclose(fp2);
+	fclose(fp3);
+	fclose(fp4);
+#endif
     return (int)msg.wParam;
 }
 

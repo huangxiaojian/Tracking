@@ -20,6 +20,15 @@
 #define min(a,b)    (((a) < (b)) ? (a) : (b))
 #endif
 
+#define OUTPUTTOFILE
+
+#ifdef OUTPUTTOFILE
+extern FILE* fp1;
+extern FILE* fp2;
+extern FILE* fp3;
+extern FILE* fp4;
+#endif
+
 typedef void (*FTHelperCallBack)(PVOID lpParam);
 
 struct GaseState{
