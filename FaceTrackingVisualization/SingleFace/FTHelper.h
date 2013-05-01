@@ -134,7 +134,7 @@ namespace util{
 	Vector3 Normal(const Vector3& a, const Vector3& b, const Vector3& c)
 	{
 		Vector3 p1 = b-a;
-		Vector3 p2 = c-b;
+		Vector3 p2 = c-a;
 		return (p1%p2).normalize();
 	}
 
