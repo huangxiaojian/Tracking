@@ -95,6 +95,10 @@ void SingleFace::DrawGLScene()
 	pos[0] = (m_FTHelper.GetVertices()[73].x+m_FTHelper.GetVertices()[70].x)*0.5;
 	pos[1] = (m_FTHelper.GetVertices()[73].y+m_FTHelper.GetVertices()[70].y)*0.5;
 	pos[2] = (m_FTHelper.GetVertices()[73].z+m_FTHelper.GetVertices()[70].z)*0.5;
+	
+	Vector3 basePoint((m_FTHelper.GetVertices()[73].x+m_FTHelper.GetVertices()[70].x)*0.5, (m_FTHelper.GetVertices()[73].y+m_FTHelper.GetVertices()[70].y)*0.5, pos[2] = (m_FTHelper.GetVertices()[73].z+m_FTHelper.GetVertices()[70].z)*0.5);
+	Vector3 a();
+
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);         // Clear The Screen And The Depth Buffer
 	//glLoadIdentity();                           // Reset The Current Modelview Matrix
