@@ -58,6 +58,18 @@ void GazeTracking::getRightPupilXY(int& x, int& y)
 	y = rightPupil.y + faceRect.y;
 }
 
+void GazeTracking::setLeftPupilXY(int x, int y)
+{
+	leftPupil.x = x - faceRect.x;
+	leftPupil.y = y - faceRect.y;
+}
+
+void GazeTracking::setRightPupilXY(int x, int y)
+{
+	rightPupil.x = x - faceRect.x;
+	rightPupil.y = y - faceRect.y;
+}
+
 cv::Point GazeTracking::getLeftPupil()
 {
 	cv::Point point;

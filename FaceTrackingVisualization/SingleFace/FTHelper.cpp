@@ -27,6 +27,8 @@ PVOID _opt = NULL;
 //#define FACETRIANGLESINDEXARRAY {70,54,71,71,74,70,75,74,71,75,57,74,69,21,68,69,68,73,73,68,72,72,24,73}
 #define ISZERO(x) (fabsf((x))<0.00001)
 
+enum EYEINDEX{RIGHTINDEX, LEFTINDEX};
+
 namespace util{
 
 	FT_VECTOR3D PLUS(const FT_VECTOR3D& a, const FT_VECTOR3D& b)
@@ -171,8 +173,8 @@ FTHelper::FTHelper()
 	memset(&m_rightPupil, 0, sizeof(FT_VECTOR3D));
 	m_pupilR = 0;
 
-	m_gazeLastState[0].set(0.5,0,69,74,73);
-	m_gazeLastState[1].set(0.5,0,67,72,71);
+	m_gazeLastState[RIGHTINDEX].set(0.5,0,69,74,73);
+	m_gazeLastState[LEFTINDEX].set(0.5,0,67,72,71);
 }
 
 FTHelper::~FTHelper()
@@ -247,6 +249,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
             HRESULT hr = m_pFaceTracker->GetFaceModel(&ftModel);
             if (SUCCEEDED(hr))
             {
+				static bool flag = true;
 #ifndef OUTPUTTOFILE
 				IplImage *img = cvCreateImage(cvSize(m_colorImage->GetWidth(), m_colorImage->GetHeight()), IPL_DEPTH_8U, 4);
 				memcpy(img->imageData, m_colorImage->GetBuffer(), m_colorImage->GetBufferSize());
@@ -274,15 +277,27 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 
 				m_pupilR = (PointDis(69, 74)+PointDis(70,73)+PointDis(67,72)+PointDis(68,71))/16;
 
+				if(flag)
+				{
+					flag = false;
+					for(int i = 0; i < LASTPOSITIONNUM; i++)
+					{
+						m_lastPosition[i][LEFTINDEX] = util::FloatToPOINT(0.5*(m_pPts3D[68].x+m_pPts3D[71].x), 0.5*(m_pPts3D[68].y+m_pPts3D[71].y));
+						m_lastPosition[i][RIGHTINDEX] = util::FloatToPOINT(0.5*(m_pPts3D[70].x+m_pPts3D[73].x), 0.5*(m_pPts3D[70].y+m_pPts3D[73].y));
+					}
+				}
+
 #ifdef OUTPUTTOFILE
 				static int count = 0;
-				fprintf(fp3, "%d\t", (int)(m_pPts2D[5].x+0.5));
-				fprintf(fp4, "%d\t", (int)(m_pPts2D[5].y+0.5));
-				if(count++ % 500 == 0)
+				fprintf(fp[2], "%d\t", (int)(m_pPts2D[5].x+0.5));
+				fprintf(fp[3], "%d\t", (int)(m_pPts2D[5].y+0.5));
+				if(count % 500 == 0)
 				{
-					fputc('\n', fp3);
-					fputc('\n', fp4);
+					fputc('\n', fp[2]);
+					fputc('\n', fp[3]);
 				}
+
+				count++;
 #endif
 #ifndef OUTPUTTOFILE
 				if(m_gazeTrack->isFindFace())
@@ -380,13 +395,47 @@ void FTHelper::CheckCameraInput()
 			m_gazeTrack->process(frame);
 			if(m_gazeTrack->isFindFace())
 			{
-				fprintf(fp1, "%d\t", m_gazeTrack->getLeftPupil().x);
-				fprintf(fp2, "%d\t", m_gazeTrack->getLeftPupil().y);
+
+				static bool flag = true;
+				if(flag)
+				{
+					flag = false;
+					for(int i = 0; i < LASTPOSITIONNUM; i++)
+					{
+						m_lastPosition[i][LEFTINDEX].x = m_gazeTrack->GetFaceRect().x+m_gazeTrack->GetFaceRect().width/2;
+						m_lastPosition[i][LEFTINDEX].y = m_gazeTrack->GetFaceRect().y+m_gazeTrack->GetFaceRect().height/2;
+						m_lastPosition[i][RIGHTINDEX].x = m_gazeTrack->GetFaceRect().x+m_gazeTrack->GetFaceRect().width/2;
+						m_lastPosition[i][RIGHTINDEX].y = m_gazeTrack->GetFaceRect().y+m_gazeTrack->GetFaceRect().height/2;
+					}
+				}
+
+				cv::Point left = m_gazeTrack->getLeftPupil();
+				cv::Point right = m_gazeTrack->getRightPupil();
+
+				POINT pupil[2];
+				pupil[LEFTINDEX].x = left.x;
+				pupil[LEFTINDEX].y = left.y;
+				pupil[RIGHTINDEX].x = right.x;
+				pupil[RIGHTINDEX].y = right.y;
+
+				LowFilter(pupil);
+
+				memmove(m_lastPosition+1, m_lastPosition, sizeof(POINT)*(LASTPOSITIONNUM-1));
+
+				m_lastPosition[0][LEFTINDEX] = pupil[LEFTINDEX];
+				m_lastPosition[0][RIGHTINDEX] = pupil[RIGHTINDEX];
+
+				fprintf(fp[0], "%d\t", m_gazeTrack->getLeftPupil().x);
+				fprintf(fp[1], "%d\t", m_gazeTrack->getLeftPupil().y);
+				fprintf(fp[4], "%d\t", pupil[LEFTINDEX].x);
+				fprintf(fp[5], "%d\t", pupil[LEFTINDEX].y);
 				count++;
 				if(count % 500 == 0)
 				{
-					fputc('\n', fp1);
-					fputc('\n', fp2);
+					fputc('\n', fp[0]);
+					fputc('\n', fp[1]);
+					fputc('\n', fp[4]);
+					fputc('\n', fp[5]);
 				}
 			}
 		}
@@ -790,7 +839,7 @@ float FTHelper::PointDis(int n, int m)
 	return sqrtf((m_pPts3D[n].x-m_pPts3D[m].x)*(m_pPts3D[n].x-m_pPts3D[m].x)+(m_pPts3D[n].y-m_pPts3D[m].y)*(m_pPts3D[n].y-m_pPts3D[m].y)+(m_pPts3D[n].z-m_pPts3D[m].z)*(m_pPts3D[n].z-m_pPts3D[m].z));
 }
 
-void FTHelper::GetPupilFromLastState(FT_VECTOR3D& pupil, GaseState& gazeState)
+void FTHelper::GetPupilFromLastState(FT_VECTOR3D& pupil, GazeState& gazeState)
 {
 	pupil.x = m_pPts3D[gazeState.triangle[0]].x+(m_pPts3D[gazeState.triangle[1]].x-m_pPts3D[gazeState.triangle[0]].x)*gazeState.x+(m_pPts3D[gazeState.triangle[2]].x-m_pPts3D[gazeState.triangle[0]].x)*gazeState.y;
 	pupil.y = m_pPts3D[gazeState.triangle[0]].y+(m_pPts3D[gazeState.triangle[1]].y-m_pPts3D[gazeState.triangle[0]].y)*gazeState.x+(m_pPts3D[gazeState.triangle[2]].y-m_pPts3D[gazeState.triangle[0]].y)*gazeState.y;
@@ -804,11 +853,18 @@ void FTHelper::Map2Dto3D()
 	
 	int triangles[] = FACETRIANGLESINDEXARRAY;
 	POINT pupil[2];
-	pupil[1].x = left.x;
-	pupil[1].y = left.y;
-	pupil[0].x = right.x;
-	pupil[0].y = right.y;
+	pupil[LEFTINDEX].x = left.x;
+	pupil[LEFTINDEX].y = left.y;
+	pupil[RIGHTINDEX].x = right.x;
+	pupil[RIGHTINDEX].y = right.y;
 	
+	LowFilter(pupil);
+
+	memmove(m_lastPosition+1, m_lastPosition, sizeof(POINT)*(LASTPOSITIONNUM-1));
+		
+	m_lastPosition[0][LEFTINDEX] = pupil[LEFTINDEX];
+	m_lastPosition[0][RIGHTINDEX] = pupil[RIGHTINDEX];
+
 	bool flags[2] = {false, false};
 	FT_VECTOR3D tmpPupil[2];
 
@@ -856,27 +912,33 @@ void FTHelper::Map2Dto3D()
 		}
 	}
 	
-	if(flags[1])
+	if(flags[LEFTINDEX])
 	{
 #ifdef _DEBUG
 		std::cout << "Map2Dto3D(): left is OK" << std::endl;
 #endif
-		m_leftPupil = tmpPupil[1];
+		m_leftPupil = tmpPupil[LEFTINDEX];
 	}
 	else
 	{
-		GetPupilFromLastState(m_leftPupil, m_gazeLastState[1]);
+		GetPupilFromLastState(m_leftPupil, m_gazeLastState[LEFTINDEX]);
 	}
 	
-	if(flags[0])
+	if(flags[RIGHTINDEX])
 	{
 #ifdef _DEBUG
 		std::cout << "Map2Dto3D(): right is OK" << std::endl;
 #endif
-		m_rightPupil = tmpPupil[0];
+		m_rightPupil = tmpPupil[RIGHTINDEX];
 	}
 	else
 	{
-		GetPupilFromLastState(m_rightPupil, m_gazeLastState[0]);
+		GetPupilFromLastState(m_rightPupil, m_gazeLastState[RIGHTINDEX]);
 	}
+}
+
+void FTHelper::LowFilter(POINT pupil[2])
+{
+	pupil[LEFTINDEX] = util::FloatToPOINT((pupil[LEFTINDEX].x*10+m_lastPosition[0][LEFTINDEX].x*3+m_lastPosition[1][LEFTINDEX].x*2+m_lastPosition[2][LEFTINDEX].x)*1.0/16, (pupil[LEFTINDEX].y*10+m_lastPosition[0][LEFTINDEX].y*3+m_lastPosition[1][LEFTINDEX].y*2+m_lastPosition[2][LEFTINDEX].y)*1.0/16);
+	pupil[RIGHTINDEX] = util::FloatToPOINT((pupil[RIGHTINDEX].x*10+m_lastPosition[0][RIGHTINDEX].x*3+m_lastPosition[1][RIGHTINDEX].x*2+m_lastPosition[2][RIGHTINDEX].x)*1.0/16, (pupil[RIGHTINDEX].y*10+m_lastPosition[0][RIGHTINDEX].y*3+m_lastPosition[1][RIGHTINDEX].y*2+m_lastPosition[2][RIGHTINDEX].y)*1.0/16);
 }

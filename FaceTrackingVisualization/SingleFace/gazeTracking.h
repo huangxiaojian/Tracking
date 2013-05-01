@@ -32,6 +32,9 @@ public:
 	cv::Rect& GetFaceRect(){return faceRect;}
 	bool isFindFace(){return findFace;}
 
+	void setLeftPupilXY(int x, int y);
+	void setRightPupilXY(int x, int y);
+
 private:
 	void findPupils(cv::Mat& frameGray, cv::Rect& face);
 

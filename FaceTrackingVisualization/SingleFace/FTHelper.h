@@ -13,6 +13,8 @@
 #define VERTEXCOUNT 121
 #define TRIANGLECOUNT 206
 
+#define LASTPOSITIONNUM 3
+
 #ifndef max
 #define max(a,b)    (((a) > (b)) ? (a) : (b))
 #endif
@@ -23,15 +25,13 @@
 #define OUTPUTTOFILE
 
 #ifdef OUTPUTTOFILE
-extern FILE* fp1;
-extern FILE* fp2;
-extern FILE* fp3;
-extern FILE* fp4;
+#define FPNUM 6
+extern FILE* fp[FPNUM];
 #endif
 
 typedef void (*FTHelperCallBack)(PVOID lpParam);
 
-struct GaseState{
+struct GazeState{
 	inline void set(float ox, float oy, int t0, int t1, int t2)
 	{
 		x = ox;
@@ -118,7 +118,9 @@ private:
 
 	//opengl gaze tracking
 	float						m_pupilR;
-	GaseState					m_gazeLastState[2];
+	GazeState					m_gazeLastState[2];
+
+	POINT						m_lastPosition[LASTPOSITIONNUM][2];
 
     BOOL SubmitFraceTrackingResult(IFTResult* pResult);
     void SetCenterOfImage(IFTResult* pResult);
@@ -135,5 +137,7 @@ private:
 
 	void Map2Dto3D();
 	float PointDis(int n, int m);
-	void GetPupilFromLastState(FT_VECTOR3D& pupil, GaseState& gazeState);
+	void GetPupilFromLastState(FT_VECTOR3D& pupil, GazeState& gazeState);
+
+	void LowFilter(POINT pupil[2]);
 };
