@@ -10,8 +10,6 @@
 
 #include "gazeTracking.h"
 
-#include "utilVector.h"
-
 #define VERTEXCOUNT 121
 #define TRIANGLECOUNT 206
 
@@ -32,6 +30,11 @@ enum FileIndex{LEFTX, LEFTY, NOSEX, NOSEY, FILTERLEFTX, FILTERLEFTY, INLEFTX, IN
 extern FILE* fp[FPNUM];
 //#define NEEDFILTER
 #define INFUNCTION
+#endif
+
+//#define OPENGLMODE
+#ifndef OPENGLMODE
+#define IMAGEMODE
 #endif
 
 typedef void (*FTHelperCallBack)(PVOID lpParam);

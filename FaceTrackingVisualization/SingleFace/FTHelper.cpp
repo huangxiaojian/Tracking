@@ -21,7 +21,7 @@
 PVOID _opt = NULL;
 #endif
 
-
+#include "utilVector.h"
 
 #define FACETRIANGLESINDEXARRAY {69,53,70,70,73,69,74,73,70,74,56,73,68,20,67,68,67,72,72,67,71,71,23,72}
 //#define FACETRIANGLESINDEXARRAY {70,54,71,71,74,70,75,74,71,75,57,74,69,21,68,69,68,73,73,68,72,72,24,73}
@@ -262,7 +262,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 
 				}
 #endif
-
+#ifdef OPENGLMODE
 				FLOAT *pAUs;
 				UINT auCount;
 				hr = m_pFTResult->GetAUCoefficients(&pAUs, &auCount);
@@ -274,8 +274,7 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 				ftModel->GetTriangles(&m_pTriangles, &m_TriangleCount);
 
 				m_pupilR = (PointDis(69, 74)+PointDis(70,73)+PointDis(67,72)+PointDis(68,71))/64;
-
-				
+#endif				
 #ifdef OUTPUTTOFILE
 #ifdef NEEDFILTER
 				//TODO: this scope maybe not needed
@@ -320,8 +319,15 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 #ifdef _DEBUG
 					//std::cout << "Begin Map()" << std::endl;
 #endif // _DEBUG
+					
+#ifdef IMAGEMODE
+					DrawGazeInImage(util::IntToPOINT(m_gazeTrack->getLeftPupil().x, m_gazeTrack->getLeftPupil().y), 5, 0xffff0000);
+					DrawGazeInImage(util::IntToPOINT(m_gazeTrack->getRightPupil().x, m_gazeTrack->getRightPupil().y), 5, 0xffff0000);
+#endif
 
+#ifdef OPENGLMODE
 					Map2Dto3D();
+#endif
 				}
 #endif
 				/*int x, y;
@@ -336,8 +342,10 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 				DrawGazeInImage(pos, 5, 0xffff0000);
 
 				VisualizeFaceModel(ftModel, &cameraConfig, pSU, 1.0, viewOffset, 0xffffff00);*/
-                //hr = VisualizeFaceModel(m_colorImage, ftModel, &cameraConfig, pSU, 1.0, viewOffset, pResult, 0x00FFFF00);
-                ftModel->Release();
+#ifdef IMAGEMODE
+				hr = VisualizeFaceModel(ftModel, &cameraConfig, pSU, 1.0, viewOffset, 0x00FFFF00);
+#endif
+				ftModel->Release();
             }
         }
     }

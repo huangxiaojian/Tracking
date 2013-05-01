@@ -26,6 +26,8 @@
 FILE* fp[FPNUM];
 #endif
 
+#include "utilVector.h"
+
 #define NEAREYEMODE
 
 class SingleFace
@@ -316,8 +318,10 @@ BOOL SingleFace::InitInstance(HINSTANCE hInstance, PWSTR lpCmdLine, int nCmdShow
     ShowWindow(m_hWnd, nCmdShow);
     UpdateWindow(m_hWnd);
 
+#ifdef OPENGLMODE
 	m_GLContext.init(m_hWnd);
 	InitGL();
+#endif
 
     return SUCCEEDED(m_FTHelper.Init(m_hWnd,
         FTHelperCallingBack,
@@ -437,6 +441,11 @@ LRESULT CALLBACK SingleFace::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPA
     case WM_DESTROY:
         PostQuitMessage(0);
         break;
+#ifdef OPENGLMODE
+	case WM_SIZE:
+		ReSizeGLScene(LOWORD(lParam), HIWORD(lParam));
+		break;
+#endif
     default:
         return DefWindowProc(hWnd, message, wParam, lParam);
     }
@@ -568,17 +577,22 @@ BOOL SingleFace::PaintWindow(HDC hdc, HWND hWnd)
     int height = rect.bottom - rect.top;
     int halfWidth = width/2;
 
-    // Show the video on the right of the window
-    //errCount += !ShowVideo(hdc, width - halfWidth, height, halfWidth, 0);
+#ifdef OPENGLMODE
+	DrawGLScene();
+	SwapBuffers(hdc);
+#endif
 
+    // Show the video on the right of the window
+#ifdef IMAGEMODE    
+	errCount += !ShowVideo(hdc, width - halfWidth, height, halfWidth, 0);
+#endif
 
 	//errCount += !ShowEye(hdc, halfWidth, height, 0, 0);
 
     // Draw the egg avatar on the left of the window
     //errCount += !ShowEggAvatar(hdc, halfWidth, height, 0, 0);
 
-	DrawGLScene();
-	SwapBuffers(hdc);
+	
 
     return ret;
 }
