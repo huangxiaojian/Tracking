@@ -25,8 +25,11 @@
 #define OUTPUTTOFILE
 
 #ifdef OUTPUTTOFILE
-#define FPNUM 6
+#define FPNUM 8
+enum FileIndex{LEFTX, LEFTY, NOSEX, NOSEY, FILTERLEFTX, FILTERLEFTY, INLEFTX, INLEFTY};
 extern FILE* fp[FPNUM];
+//#define NEEDFILTER
+#define INFUNCTION
 #endif
 
 typedef void (*FTHelperCallBack)(PVOID lpParam);
@@ -119,9 +122,9 @@ private:
 	//opengl gaze tracking
 	float						m_pupilR;
 	GazeState					m_gazeLastState[2];
-
+#ifdef NEEDFILTER
 	POINT						m_lastPosition[LASTPOSITIONNUM][2];
-
+#endif
     BOOL SubmitFraceTrackingResult(IFTResult* pResult);
     void SetCenterOfImage(IFTResult* pResult);
     void CheckCameraInput();
@@ -138,6 +141,7 @@ private:
 	void Map2Dto3D();
 	float PointDis(int n, int m);
 	void GetPupilFromLastState(FT_VECTOR3D& pupil, GazeState& gazeState);
-
+#ifdef NEEDFILTER
 	void LowFilter(POINT pupil[2]);
+#endif
 };

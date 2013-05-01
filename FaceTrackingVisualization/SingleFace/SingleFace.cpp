@@ -26,6 +26,7 @@
 FILE* fp[FPNUM];
 #endif
 
+#define NEAREYEMODE
 
 class SingleFace
 {
@@ -107,8 +108,11 @@ void SingleFace::DrawGLScene()
 	glMatrixMode(GL_MODELVIEW);                     // Select The Modelview Matrix
 	glLoadIdentity();                           // Reset The Modelview Matrix
 	
-	//gluLookAt(0, 0, -3, 0.059938, -0.240880, 1.064333, 0, 1, 0);
+#ifdef NEAREYEMODE
 	gluLookAt(pos[0], pos[1], pos[2]+0.03, pos[0], pos[1], pos[2], 0, 1, 0);
+#else
+	gluLookAt(0, 0, -3, 0.059938, -0.240880, 1.064333, 0, 1, 0);
+#endif	
 
 
 	GLint* triangles;
@@ -141,8 +145,10 @@ void SingleFace::DrawGLScene()
 
 	glPushMatrix();
 	glColor3f(0.0, 1.0, 0.0);
-	//glScalef(5.0, 5.0, 5.0);
-	//glTranslatef(0.0, 0, -1.3);
+#ifndef NEAREYEMODE
+	glScalef(5.0, 5.0, 5.0);
+	glTranslatef(0.0, 0, -1.3);
+#endif
 
 	glBegin(GL_LINES);
 	for(int i = 0; i < 206; i++)
@@ -214,15 +220,21 @@ int SingleFace::Run(HINSTANCE hInst, PWSTR lpCmdLine, int nCmdShow)
 #ifdef OUTPUTTOFILE
 	//std::string file = "stablemove";
 	//std::string file = "headaround";
-	//std::string file = "gazearound";
+	std::string file = "gazearound";
 	//std::string file = "headsin";
-	std::string file = "wink";
-	fp[0] = fopen((file+"x.xls").c_str(), "w");
-	fp[1] = fopen((file+"y2.xls").c_str(), "w");
-	fp[2] = fopen((file+"nosex2.xls").c_str(), "w");
-	fp[3] = fopen((file+"nosey2.xls").c_str(), "w");
-	fp[4] = fopen((file+"xfilter2.xls").c_str(), "w");
-	fp[5] = fopen((file+"yfilter2.xls").c_str(), "w");
+	//std::string file = "wink";
+	fp[LEFTX] = fopen((file+"x.xls").c_str(), "w");
+	fp[LEFTY] = fopen((file+"y.xls").c_str(), "w");
+	fp[NOSEX] = fopen((file+"nosex.xls").c_str(), "w");
+	fp[NOSEY] = fopen((file+"nosey.xls").c_str(), "w");
+#ifdef NEEDFILTER
+	fp[FILTERLEFTX] = fopen((file+"xfilter.xls").c_str(), "w");
+	fp[FILTERLEFTY] = fopen((file+"yfilter.xls").c_str(), "w");
+#endif
+#ifdef INFUNCTION
+	fp[INLEFTX] = fopen((file+"inx.xls").c_str(), "w");
+	fp[INLEFTY] = fopen((file+"iny.xls").c_str(), "w");
+#endif
 #endif 
 
     MSG msg = {static_cast<HWND>(0), static_cast<UINT>(0), static_cast<WPARAM>(-1)};
@@ -241,8 +253,18 @@ int SingleFace::Run(HINSTANCE hInst, PWSTR lpCmdLine, int nCmdShow)
     UninitInstance();
 
 #ifdef OUTPUTTOFILE
-	for(int i = 0; i < FPNUM; i++)
-		fclose(fp[i]);
+	fclose(fp[LEFTX]);
+	fclose(fp[LEFTY]);
+	fclose(fp[NOSEX]);
+	fclose(fp[NOSEY]);
+#ifdef NEEDFILTER
+	fclose(fp[FILTERLEFTX]);
+	fclose(fp[FILTERLEFTY]);
+#endif
+#ifdef INFUNCTION
+	fclose(fp[INLEFTX]);
+	fclose(fp[INLEFTY]);
+#endif
 #endif
     return (int)msg.wParam;
 }

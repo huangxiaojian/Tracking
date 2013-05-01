@@ -249,7 +249,6 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
             HRESULT hr = m_pFaceTracker->GetFaceModel(&ftModel);
             if (SUCCEEDED(hr))
             {
-				static bool flag = true;
 #ifndef OUTPUTTOFILE
 				IplImage *img = cvCreateImage(cvSize(m_colorImage->GetWidth(), m_colorImage->GetHeight()), IPL_DEPTH_8U, 4);
 				memcpy(img->imageData, m_colorImage->GetBuffer(), m_colorImage->GetBufferSize());
@@ -275,8 +274,13 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 					scale, rotationXYZ, translationXYZ, m_pPts2D, VERTEXCOUNT);
 				ftModel->GetTriangles(&m_pTriangles, &m_TriangleCount);
 
-				m_pupilR = (PointDis(69, 74)+PointDis(70,73)+PointDis(67,72)+PointDis(68,71))/16;
+				m_pupilR = (PointDis(69, 74)+PointDis(70,73)+PointDis(67,72)+PointDis(68,71))/64;
 
+				
+#ifdef OUTPUTTOFILE
+#ifdef NEEDFILTER
+				//TODO: this scope maybe not needed
+				static bool flag = true;
 				if(flag)
 				{
 					flag = false;
@@ -286,16 +290,28 @@ BOOL FTHelper::SubmitFraceTrackingResult(IFTResult* pResult)
 						m_lastPosition[i][RIGHTINDEX] = util::FloatToPOINT(0.5*(m_pPts3D[70].x+m_pPts3D[73].x), 0.5*(m_pPts3D[70].y+m_pPts3D[73].y));
 					}
 				}
-
-#ifdef OUTPUTTOFILE
-				static int count = 0;
-				fprintf(fp[2], "%d\t", (int)(m_pPts2D[5].x+0.5));
-				fprintf(fp[3], "%d\t", (int)(m_pPts2D[5].y+0.5));
+#endif
+				static int count = 1;
+				fprintf(fp[NOSEX], "%d\t", (int)(m_pPts2D[5].x+0.5));
+				fprintf(fp[NOSEY], "%d\t", (int)(m_pPts2D[5].y+0.5));
 				if(count % 500 == 0)
 				{
-					fputc('\n', fp[2]);
-					fputc('\n', fp[3]);
+					fputc('\n', fp[NOSEX]);
+					fputc('\n', fp[NOSEY]);
 				}
+
+#ifdef INFUNCTION
+				if(m_gazeTrack->isFindFace())
+				{
+					fprintf(fp[INLEFTX], "%d\t", m_gazeTrack->getLeftPupil().x);
+					fprintf(fp[INLEFTY], "%d\t", m_gazeTrack->getLeftPupil().y);
+					if(count % 500 == 0)
+					{
+						fputc('\n', fp[INLEFTX]);
+						fputc('\n', fp[INLEFTY]);
+					}
+				}
+#endif
 
 				count++;
 #endif
@@ -395,7 +411,7 @@ void FTHelper::CheckCameraInput()
 			m_gazeTrack->process(frame);
 			if(m_gazeTrack->isFindFace())
 			{
-
+#ifdef NEEDFILTER
 				static bool flag = true;
 				if(flag)
 				{
@@ -424,18 +440,22 @@ void FTHelper::CheckCameraInput()
 
 				m_lastPosition[0][LEFTINDEX] = pupil[LEFTINDEX];
 				m_lastPosition[0][RIGHTINDEX] = pupil[RIGHTINDEX];
-
-				fprintf(fp[0], "%d\t", m_gazeTrack->getLeftPupil().x);
-				fprintf(fp[1], "%d\t", m_gazeTrack->getLeftPupil().y);
-				fprintf(fp[4], "%d\t", pupil[LEFTINDEX].x);
-				fprintf(fp[5], "%d\t", pupil[LEFTINDEX].y);
+#endif
+				fprintf(fp[LEFTX], "%d\t", m_gazeTrack->getLeftPupil().x);
+				fprintf(fp[LEFTY], "%d\t", m_gazeTrack->getLeftPupil().y);
+#ifdef NEEDFILTER
+				fprintf(fp[FILTERLEFTX], "%d\t", pupil[LEFTINDEX].x);
+				fprintf(fp[FILTERLEFTY], "%d\t", pupil[LEFTINDEX].y);
+#endif NEEDFILTER
 				count++;
 				if(count % 500 == 0)
 				{
-					fputc('\n', fp[0]);
-					fputc('\n', fp[1]);
-					fputc('\n', fp[4]);
-					fputc('\n', fp[5]);
+					fputc('\n', fp[LEFTX]);
+					fputc('\n', fp[LEFTY]);
+#ifdef NEEDFILTER
+					fputc('\n', fp[FILTERLEFTX]);
+					fputc('\n', fp[FILTERLEFTY]);
+#endif
 				}
 			}
 		}
@@ -858,12 +878,15 @@ void FTHelper::Map2Dto3D()
 	pupil[RIGHTINDEX].x = right.x;
 	pupil[RIGHTINDEX].y = right.y;
 	
+#ifdef NEEDFILTER
 	LowFilter(pupil);
 
 	memmove(m_lastPosition+1, m_lastPosition, sizeof(POINT)*(LASTPOSITIONNUM-1));
 		
 	m_lastPosition[0][LEFTINDEX] = pupil[LEFTINDEX];
 	m_lastPosition[0][RIGHTINDEX] = pupil[RIGHTINDEX];
+
+#endif
 
 	bool flags[2] = {false, false};
 	FT_VECTOR3D tmpPupil[2];
@@ -937,8 +960,10 @@ void FTHelper::Map2Dto3D()
 	}
 }
 
+#ifdef NEEDFILTER
 void FTHelper::LowFilter(POINT pupil[2])
 {
 	pupil[LEFTINDEX] = util::FloatToPOINT((pupil[LEFTINDEX].x*10+m_lastPosition[0][LEFTINDEX].x*3+m_lastPosition[1][LEFTINDEX].x*2+m_lastPosition[2][LEFTINDEX].x)*1.0/16, (pupil[LEFTINDEX].y*10+m_lastPosition[0][LEFTINDEX].y*3+m_lastPosition[1][LEFTINDEX].y*2+m_lastPosition[2][LEFTINDEX].y)*1.0/16);
 	pupil[RIGHTINDEX] = util::FloatToPOINT((pupil[RIGHTINDEX].x*10+m_lastPosition[0][RIGHTINDEX].x*3+m_lastPosition[1][RIGHTINDEX].x*2+m_lastPosition[2][RIGHTINDEX].x)*1.0/16, (pupil[RIGHTINDEX].y*10+m_lastPosition[0][RIGHTINDEX].y*3+m_lastPosition[1][RIGHTINDEX].y*2+m_lastPosition[2][RIGHTINDEX].y)*1.0/16);
 }
+#endif
