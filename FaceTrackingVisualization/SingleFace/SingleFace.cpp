@@ -96,9 +96,12 @@ void SingleFace::DrawGLScene()
 	pos[1] = (m_FTHelper.GetVertices()[73].y+m_FTHelper.GetVertices()[70].y)*0.5;
 	pos[2] = (m_FTHelper.GetVertices()[73].z+m_FTHelper.GetVertices()[70].z)*0.5;
 	
-	Vector3 basePoint((m_FTHelper.GetVertices()[73].x+m_FTHelper.GetVertices()[70].x)*0.5, (m_FTHelper.GetVertices()[73].y+m_FTHelper.GetVertices()[70].y)*0.5, pos[2] = (m_FTHelper.GetVertices()[73].z+m_FTHelper.GetVertices()[70].z)*0.5);
-	Vector3 a();
-
+	Vector3 a(m_FTHelper.GetVertices()[70].x, m_FTHelper.GetVertices()[70].y, m_FTHelper.GetVertices()[70].z);
+	Vector3 b(m_FTHelper.GetVertices()[73].x, m_FTHelper.GetVertices()[73].y, m_FTHelper.GetVertices()[73].z);
+	Vector3 c(m_FTHelper.GetVertices()[69].x, m_FTHelper.GetVertices()[69].y, m_FTHelper.GetVertices()[69].z);
+	Vector3 base((m_FTHelper.GetVertices()[73].x+m_FTHelper.GetVertices()[70].x)*0.5, (m_FTHelper.GetVertices()[73].y+m_FTHelper.GetVertices()[70].y)*0.5, pos[2] = (m_FTHelper.GetVertices()[73].z+m_FTHelper.GetVertices()[70].z)*0.5);
+	Vector3 n = ((c-a)%(b-a)).normalize();
+	Vector3 eye = base + n*0.03;
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);         // Clear The Screen And The Depth Buffer
 	//glLoadIdentity();                           // Reset The Current Modelview Matrix
@@ -113,7 +116,8 @@ void SingleFace::DrawGLScene()
 	glLoadIdentity();                           // Reset The Modelview Matrix
 	
 #ifdef NEAREYEMODE
-	gluLookAt(pos[0], pos[1], pos[2]+0.03, pos[0], pos[1], pos[2], 0, 1, 0);
+	//gluLookAt(pos[0], pos[1], pos[2]+0.03, pos[0], pos[1], pos[2], 0, 1, 0);
+	gluLookAt(eye[0], eye[1], eye[2], pos[0], pos[1], pos[2], 0, 1, 0);
 #else
 	gluLookAt(0, 0, -3, 0.059938, -0.240880, 1.064333, 0, 1, 0);
 #endif	
