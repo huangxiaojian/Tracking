@@ -1,27 +1,27 @@
 #include "stdafx.h"
 #include "gazeTracking.h"
+
 #include <vector>
 #include <queue>
 
-GazeTracking::GazeTracking():kEyePercentTop(25),kEyePercentSide(13),
-	kEyePercentHeight(30),kEyePercentWidth(35), 
-	kFastEyeWidth(50), kWeightBlurSize(5),
-	kWeightDivisor(150.0), kGradientThreshold(50.0),
-	kPostProcessThreshold(0.97), kSmoothFaceImage(false),
-	kSmoothFaceFactor(0.005),kEnableEyeCorner(false),
-	kEnablePostProcess(true)
+GazeTracking::GazeTracking():kPlotVectorField(false),
+	kEyePercentTop(25), kEyePercentSide(13), kEyePercentHeight(30), kEyePercentWidth(35),
+	kSmoothFaceImage(false), kSmoothFaceFactor(0.005),
+	kFastEyeWidth(50), kWeightBlurSize(5), kEnableWeight(true), kWeightDivisor(150.0),kGradientThreshold(50.0),
+	kEnablePostProcess(true), kPostProcessThreshold(0.97),
+	kEnableEyeCorner(false)
 {
-
+	createCornerKernels();
 }
 
 GazeTracking::~GazeTracking()
 {
-
+	releaseCornerKernels();
 }
 
-bool GazeTracking::initialize(cv::String xmlFile)
+bool GazeTracking::initialize(cv::String fileName)
 {
-	return faceCascade.load(xmlFile);
+	return faceCascade.load(fileName);
 }
 
 void GazeTracking::process(IplImage* image)
@@ -35,132 +35,43 @@ void GazeTracking::process(cv::Mat& frame)
 	std::vector<cv::Rect> faces;
 	std::vector<cv::Mat> rgbChannels(frame.channels());
 	cv::split(frame, rgbChannels);
-	cv::Mat frameGray = rgbChannels[2];
+	cv::Mat frame_gray = rgbChannels[2];
 
+	faceCascade.detectMultiScale(frame_gray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE|CV_HAAR_FIND_BIGGEST_OBJECT, cv::Size(150, 150));
 	findFace = false;
-	faceCascade.detectMultiScale( frameGray, faces, 1.1, 2, 0|CV_HAAR_SCALE_IMAGE|CV_HAAR_FIND_BIGGEST_OBJECT, cv::Size(150, 150) );
-	if(faces.size() > 0)
+	if (faces.size() > 0) 
 	{
 		findFace = true;
-		findPupils(frameGray, faces[0]);
+		findEyes(frame_gray, faces[0]);
 	}
 }
 
-void GazeTracking::getLeftPupilXY(int& x, int& y)
+void GazeTracking::findEyes(cv::Mat& frame_gray, cv::Rect& face) 
 {
-	x = leftPupil.x + faceRect.x;
-	y = leftPupil.y + faceRect.y;
-}
+	detectedFace = face;
+	faceROI = frame_gray(face);
 
-void GazeTracking::getRightPupilXY(int& x, int& y)
-{
-	x = rightPupil.x + faceRect.x;
-	y = rightPupil.y + faceRect.y;
-}
-
-void GazeTracking::setLeftPupilXY(int x, int y)
-{
-	leftPupil.x = x - faceRect.x;
-	leftPupil.y = y - faceRect.y;
-}
-
-void GazeTracking::setRightPupilXY(int x, int y)
-{
-	rightPupil.x = x - faceRect.x;
-	rightPupil.y = y - faceRect.y;
-}
-
-cv::Point GazeTracking::getLeftPupil()
-{
-	cv::Point point;
-	point.x = leftPupil.x + faceRect.x;
-	point.y = leftPupil.y + faceRect.y;
-	return point;
-}
-
-cv::Point GazeTracking::getRightPupil()
-{
-	cv::Point point;
-	point.x = rightPupil.x + faceRect.x;
-	point.y = rightPupil.y + faceRect.y;
-	return point;
-}
-
-void GazeTracking::getLeftPupilXYInFaceRect(int& x, int& y)
-{
-	x = leftPupil.x;
-	y = leftPupil.y;
-}
-
-void GazeTracking::getRightPupilXYInFaceRect(int& x, int& y)
-{
-	x = rightPupil.x;
-	y = rightPupil.y;
-}
-
-cv::Point GazeTracking::getLeftPupilInFaceRect()
-{
-	return leftPupil;
-}
-
-cv::Point GazeTracking::getRightPupilInFaceRect()
-{
-	return rightPupil;
-}
-
-int GazeTracking::round(double x)
-{
-	return (int)(x+0.5);
-}
-
-void GazeTracking::findPupils(cv::Mat& frameGray, cv::Rect& face)
-{
-	faceRect = face;
-	faceROI = frameGray(face);
-	if (kSmoothFaceImage) {
-		double sigma = kSmoothFaceFactor * face.width;
-		GaussianBlur( faceROI, faceROI, cv::Size( 0, 0 ), sigma);
-	}
 	//-- Find eye regions and draw them
-	int eyeRegionWidth = face.width * (kEyePercentWidth/100.0);
-	int eyeRegionHeight = face.width * (kEyePercentHeight/100.0);
-	int eyeRegionTop = face.height * (kEyePercentTop/100.0);
-	cv::Rect leftEyeRegion(face.width*(kEyePercentSide/100.0),
-		eyeRegionTop,eyeRegionWidth,eyeRegionHeight);
-	cv::Rect rightEyeRegion(face.width - eyeRegionWidth - face.width*(kEyePercentSide/100.0),
-		eyeRegionTop,eyeRegionWidth,eyeRegionHeight);
-
+	int eye_region_width = face.width * (kEyePercentWidth/100.0);
+	int eye_region_height = face.width * (kEyePercentHeight/100.0);
+	int eye_region_top = face.height * (kEyePercentTop/100.0);
+	cv::Rect left_eye_region(face.width*(kEyePercentSide/100.0),
+		eye_region_top,eye_region_width,eye_region_height);
+	leftEyeRegion = left_eye_region;
+	cv::Rect right_eye_region(face.width - eye_region_width - face.width*(kEyePercentSide/100.0),
+		eye_region_top,eye_region_width,eye_region_height);
+	rightEyeRegion = right_eye_region;
 	//-- Find Eye Centers
-	leftPupil = findEyeCenter(faceROI,leftEyeRegion,"Left Eye");
-	rightPupil = findEyeCenter(faceROI,rightEyeRegion,"Right Eye");
-	// get corner regions
-	cv::Rect leftCornerRegion(leftEyeRegion);
-	leftCornerRegion.width -= leftPupil.x;
-	leftCornerRegion.x += leftPupil.x;
-	leftCornerRegion.height /= 2;
-	leftCornerRegion.y += leftCornerRegion.height / 2;
-	cv::Rect rightCornerRegion(rightEyeRegion);
-	rightCornerRegion.width = rightPupil.x;
-	rightCornerRegion.height /= 2;
-	rightCornerRegion.y += rightCornerRegion.height / 2;
-	// change eye centers to face coordinates
+	leftPupil = findEyeCenter(faceROI,leftEyeRegion);
+	rightPupil = findEyeCenter(faceROI,rightEyeRegion);
+
 	rightPupil.x += rightEyeRegion.x;
 	rightPupil.y += rightEyeRegion.y;
 	leftPupil.x += leftEyeRegion.x;
 	leftPupil.y += leftEyeRegion.y;
-
-	//-- Find Eye Corners
-	/*if (kEnableEyeCorner) {
-		cv::Point leftCorner = findEyeCorner(faceROI(leftCornerRegion), false);
-		leftCorner.x += leftCornerRegion.x;
-		leftCorner.y += leftCornerRegion.y;
-		cv::Point rightCorner = findEyeCorner(faceROI(leftCornerRegion), false);
-		rightCorner.x += rightCornerRegion.x;
-		rightCorner.y += rightCornerRegion.y;
-	}*/
 }
 
-cv::Point GazeTracking::findEyeCenter(cv::Mat face, cv::Rect eye, std::string debugWindow)
+cv::Point GazeTracking::findEyeCenter(cv::Mat& face, cv::Rect& eye)//used
 {
 	cv::Mat eyeROIUnscaled = face(eye);
 	cv::Mat eyeROI;
@@ -169,14 +80,13 @@ cv::Point GazeTracking::findEyeCenter(cv::Mat face, cv::Rect eye, std::string de
 	//-- Find the gradient
 	cv::Mat gradientX = computeMatXGradient(eyeROI);
 	cv::Mat gradientY = computeMatXGradient(eyeROI.t()).t();
-
 	//-- Normalize and threshold the gradient
 	// compute all the magnitudes
 	cv::Mat mags = matrixMagnitude(gradientX, gradientY);
-
 	//compute the threshold
 	double gradientThresh = computeDynamicThreshold(mags, kGradientThreshold);
-
+	//double gradientThresh = kGradientThreshold;
+	//double gradientThresh = 0;
 	//normalize
 	for (int y = 0; y < eyeROI.rows; ++y) {
 		double *Xr = gradientX.ptr<double>(y), *Yr = gradientY.ptr<double>(y);
@@ -193,7 +103,7 @@ cv::Point GazeTracking::findEyeCenter(cv::Mat face, cv::Rect eye, std::string de
 			}
 		}
 	}
-
+	//imshow(debugWindow,gradientX);
 	//-- Create a blurred and inverted image for weighting
 	cv::Mat weight;
 	GaussianBlur( eyeROI, weight, cv::Size( kWeightBlurSize, kWeightBlurSize ), 0, 0 );
@@ -203,7 +113,7 @@ cv::Point GazeTracking::findEyeCenter(cv::Mat face, cv::Rect eye, std::string de
 			row[x] = (255 - row[x]);
 		}
 	}
-
+	//imshow(debugWindow,weight);
 	//-- Run the algorithm!
 	cv::Mat outSum = cv::Mat::zeros(eyeROI.rows,eyeROI.cols,CV_64F);
 	// for each possible center
@@ -219,7 +129,6 @@ cv::Point GazeTracking::findEyeCenter(cv::Mat face, cv::Rect eye, std::string de
 			testPossibleCentersFormula(x, y, Wr[x], gX, gY, outSum);
 		}
 	}
-
 	// scale all the values down, basically averaging them
 	double numGradients = (weight.rows*weight.cols);
 	cv::Mat out;
@@ -230,31 +139,24 @@ cv::Point GazeTracking::findEyeCenter(cv::Mat face, cv::Rect eye, std::string de
 	double maxVal;
 	cv::minMaxLoc(out, NULL,&maxVal,NULL,&maxP);
 	//-- Flood fill the edges
-	if(kEnablePostProcess) {
+	if(kEnablePostProcess) 
+	{
 		cv::Mat floodClone;
-		//double floodThresh = computeDynamicThreshold(out, 1.5);
 		double floodThresh = maxVal * kPostProcessThreshold;
 		cv::threshold(out, floodClone, floodThresh, 0.0f, cv::THRESH_TOZERO);
+
 		cv::Mat mask = floodKillEdges(floodClone);
-		//imshow(debugWindow + " Mask",mask);
-		//imshow(debugWindow,out);
-		// redo max
+
 		cv::minMaxLoc(out, NULL,&maxVal,NULL,&maxP,mask);
 	}
 	return unscalePoint(maxP,eye);
 }
 
-cv::Point GazeTracking::unscalePoint(cv::Point p, cv::Rect origSize) 
+bool GazeTracking::floodShouldPushPoint(const cv::Point &np, const cv::Mat &mat) 
 {
-	float ratio = (((float)kFastEyeWidth)/origSize.width);
-	/*int x = round(p.x / ratio);
-	int y = round(p.y / ratio);*/
-	int x = round(p.x / ratio);
-	int y = round(p.y / ratio);
-	return cv::Point(x,y);
+	return inMat(np, mat.rows, mat.cols);
 }
 
-// returns a mask
 cv::Mat GazeTracking::floodKillEdges(cv::Mat &mat) 
 {
 	rectangle(mat,cv::Rect(0,0,mat.cols,mat.rows),255);
@@ -283,17 +185,39 @@ cv::Mat GazeTracking::floodKillEdges(cv::Mat &mat)
 	}
 	return mask;
 }
-bool GazeTracking::floodShouldPushPoint(const cv::Point &np, const cv::Mat &mat) 
+
+void GazeTracking::scaleToFastSize(const cv::Mat &src,cv::Mat &dst) //used
 {
-	return inMat(np, mat.rows, mat.cols);
+	cv::resize(src, dst, cv::Size(kFastEyeWidth,(((float)kFastEyeWidth)/src.cols) * src.rows));
 }
 
-bool GazeTracking::inMat(cv::Point p,int rows,int cols) 
+cv::Point GazeTracking::unscalePoint(cv::Point& p, cv::Rect& origSize) //used 
 {
-	return p.x >= 0 && p.x < cols && p.y >= 0 && p.y < rows;
+	float ratio = (((float)kFastEyeWidth)/origSize.width);
+	int x = round(p.x / ratio);
+	int y = round(p.y / ratio);
+	return cv::Point(x,y);
 }
 
-void GazeTracking::testPossibleCentersFormula(int x, int y, unsigned char weight,double gx, double gy, cv::Mat &out) 
+cv::Mat GazeTracking::computeMatXGradient(const cv::Mat &mat) //used
+{
+	cv::Mat out(mat.rows,mat.cols,CV_64F);
+
+	for (int y = 0; y < mat.rows; ++y) {
+		const uchar *Mr = mat.ptr<uchar>(y);
+		double *Or = out.ptr<double>(y);
+
+		Or[0] = Mr[1] - Mr[0];
+		for (int x = 1; x < mat.cols - 1; ++x) {
+			Or[x] = (Mr[x+1] - Mr[x-1])/2.0;
+		}
+		Or[mat.cols-1] = Mr[mat.cols-1] - Mr[mat.cols-2];
+	}
+
+	return out;
+}
+
+void GazeTracking::testPossibleCentersFormula(int x, int y, unsigned char weight,double gx, double gy, cv::Mat &out) //used
 {
 	// for all possible centers
 	for (int cy = 0; cy < out.rows; ++cy) {
@@ -312,20 +236,28 @@ void GazeTracking::testPossibleCentersFormula(int x, int y, unsigned char weight
 			double dotProduct = dx*gx + dy*gy;
 			dotProduct = std::max(0.0,dotProduct);
 			// square and multiply by the weight
-			Or[cx] += dotProduct * dotProduct * (weight/kWeightDivisor);
+			if (kEnableWeight) {
+				Or[cx] += dotProduct * dotProduct * (weight/kWeightDivisor);
+			} else {
+				Or[cx] += dotProduct * dotProduct;
+			}
 		}
 	}
 }
 
-double GazeTracking::computeDynamicThreshold(const cv::Mat &mat, double stdDevFactor) 
+bool GazeTracking::rectInImage(cv::Rect& rect, cv::Mat& image) 
 {
-	cv::Scalar stdMagnGrad, meanMagnGrad;
-	cv::meanStdDev(mat, meanMagnGrad, stdMagnGrad);
-	double stdDev = stdMagnGrad[0] / sqrt((long double)mat.rows*mat.cols);
-	return stdDevFactor * stdDev + meanMagnGrad[0];
+	return rect.x > 0 && rect.y > 0 && rect.x+rect.width < image.cols &&
+		rect.y+rect.height < image.rows;
 }
 
-cv::Mat GazeTracking::matrixMagnitude(const cv::Mat &matX, const cv::Mat &matY) {
+bool GazeTracking::inMat(const cv::Point& p,int rows,int cols) 
+{
+	return p.x >= 0 && p.x < cols && p.y >= 0 && p.y < rows;
+}
+
+cv::Mat GazeTracking::matrixMagnitude(const cv::Mat &matX, const cv::Mat &matY)//used 
+{
 	cv::Mat mags(matX.rows,matX.cols,CV_64F);
 	for (int y = 0; y < matX.rows; ++y) {
 		const double *Xr = matX.ptr<double>(y), *Yr = matY.ptr<double>(y);
@@ -339,25 +271,74 @@ cv::Mat GazeTracking::matrixMagnitude(const cv::Mat &matX, const cv::Mat &matY) 
 	return mags;
 }
 
-void GazeTracking::scaleToFastSize(const cv::Mat &src,cv::Mat &dst) 
+double GazeTracking::computeDynamicThreshold(const cv::Mat &mat, double stdDevFactor)//used 
 {
-	cv::resize(src, dst, cv::Size(kFastEyeWidth,(((float)kFastEyeWidth)/src.cols) * src.rows));
+	cv::Scalar stdMagnGrad, meanMagnGrad;
+	cv::meanStdDev(mat, meanMagnGrad, stdMagnGrad);
+	double stdDev = stdMagnGrad[0] / sqrt((double)mat.rows*mat.cols);
+	return stdDevFactor * stdDev + meanMagnGrad[0];
 }
 
-cv::Mat GazeTracking::computeMatXGradient(const cv::Mat &mat) 
+cv::Mat GazeTracking::eyeCornerMap(const cv::Mat &region, bool left, bool left2) 
 {
-	cv::Mat out(mat.rows,mat.cols,CV_64F);
+  cv::Mat cornerMap;
 
-	for (int y = 0; y < mat.rows; ++y) {
-		const uchar *Mr = mat.ptr<uchar>(y);
-		double *Or = out.ptr<double>(y);
+  cv::Size sizeRegion = region.size();
+  cv::Range colRange(sizeRegion.width / 4, sizeRegion.width * 3 / 4);
+  cv::Range rowRange(sizeRegion.height / 4, sizeRegion.height * 3 / 4);
 
-		Or[0] = Mr[1] - Mr[0];
-		for (int x = 1; x < mat.cols - 1; ++x) {
-			Or[x] = (Mr[x+1] - Mr[x-1])/2.0;
-		}
-		Or[mat.cols-1] = Mr[mat.cols-1] - Mr[mat.cols-2];
-	}
+  cv::Mat miRegion(region, rowRange, colRange);
 
-	return out;
+  cv::filter2D(miRegion, cornerMap, CV_32F,
+               (left && !left2) || (!left && !left2) ? *leftCornerKernel : *rightCornerKernel);
+
+  return cornerMap;
+}
+
+cv::Point2f GazeTracking::findEyeCorner(cv::Mat& region, bool left, bool left2) 
+{
+  cv::Mat cornerMap = eyeCornerMap(region, left, left2);
+
+  cv::Point maxP;
+  cv::minMaxLoc(cornerMap,NULL,NULL,NULL,&maxP);
+
+  cv::Point2f maxP2;
+  maxP2 = findSubpixelEyeCorner(cornerMap, maxP);
+
+  return maxP2;
+}
+
+cv::Point2f GazeTracking::findSubpixelEyeCorner(cv::Mat& region, cv::Point& maxP) 
+{
+  cv::Size sizeRegion = region.size();
+
+  cv::Mat cornerMap(sizeRegion.height * 10, sizeRegion.width * 10, CV_32F);
+
+  cv::resize(region, cornerMap, cornerMap.size(), 0, 0, cv::INTER_CUBIC);
+
+  cv::Point maxP2;
+  cv::minMaxLoc(cornerMap, NULL,NULL,NULL,&maxP2);
+
+  return cv::Point2f(sizeRegion.width / 2 + maxP2.x / 10,
+                     sizeRegion.height / 2 + maxP2.y / 10);
+}
+
+void GazeTracking::createCornerKernels() 
+{
+	float kEyeCornerKernel[4][6] = {
+		{-1,-1,-1, 1, 1, 1},
+		{-1,-1,-1,-1, 1, 1},
+		{-1,-1,-1,-1, 0, 3},
+		{ 1, 1, 1, 1, 1, 1},
+	};
+	rightCornerKernel = new cv::Mat(4,6,CV_32F,kEyeCornerKernel);
+	leftCornerKernel = new cv::Mat(4,6,CV_32F);
+	// flip horizontally
+	cv::flip(*rightCornerKernel, *leftCornerKernel, 1);
+}
+
+void GazeTracking::releaseCornerKernels() 
+{
+	delete leftCornerKernel;
+	delete rightCornerKernel;
 }

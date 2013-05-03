@@ -775,7 +775,9 @@ HRESULT FTHelper::VisualizeFaceModel(IFTModel* pModel, FT_CAMERA_CONFIG const* p
 								{
 									if(eht.pEdges[i] != 0)
 									{
+#ifdef DRAWFACEMODEL
 										m_colorImage->DrawLine(p3DMdl[eht.pEdges[i] >> 16], p3DMdl[eht.pEdges[i] & 0xFFFF], color, 1);
+#endif
 									}
 								}
 								_freea(eht.pEdges);

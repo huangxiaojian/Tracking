@@ -35,6 +35,7 @@ extern FILE* fp[FPNUM];
 //#define OPENGLMODE
 #ifndef OPENGLMODE
 #define IMAGEMODE
+//#define DRAWFACEMODEL
 #endif
 
 typedef void (*FTHelperCallBack)(PVOID lpParam);
